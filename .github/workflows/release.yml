@@ -1,0 +1,78 @@
+name: Release
+
+# Tag im Format vX.Y.Z (z.B. v1.0.0) -> baut Release-Build und veroeffentlicht
+# ihn als GitHub Release. Manuelles Ausloesen (workflow_dispatch) ist ebenfalls
+# moeglich, erzeugt dann aber nur das Build-Artifact zum Pruefen, kein Release
+# (siehe "if" am letzten Schritt) - so laesst sich der Build testen, ohne
+# gleich einen Tag setzen zu muessen.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    # .NET Framework 4.8 braucht den vollen Windows-Build; windows-latest
+    # bringt Developer Pack + Targeting Pack fuer net48 bereits mit.
+    runs-on: windows-latest
+
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v4
+
+      - name: .NET SDK einrichten
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Release-Build
+        run: dotnet build src/BasicInstaller/BasicInstaller.csproj -c Release
+
+      - name: Build-Ausgabe zippen
+        shell: pwsh
+        run: |
+          $out = "src/BasicInstaller/bin/Release/net48"
+          $zipName = "BasicInstaller-$($env:GITHUB_REF_NAME).zip"
+          Compress-Archive -Path "$out/*" -DestinationPath $zipName -Force
+          echo "ZIP_PATH=$zipName" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Als Build-Artifact hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: BasicInstaller-${{ github.ref_name }}
+          path: ${{ env.ZIP_PATH }}
+
+      - name: Installer mit Inno Setup bauen (optional)
+        shell: pwsh
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (Test-Path $iscc) {
+            & $iscc "installer/setup.iss"
+            if ($LASTEXITCODE -ne 0) {
+              throw "Inno-Setup-Build ist fehlgeschlagen (Exit-Code $LASTEXITCODE)."
+            }
+            $setupExe = "installer/Output/BasicInstaller-Setup.exe"
+            if (Test-Path $setupExe) {
+              echo "SETUP_PATH=$setupExe" | Out-File -FilePath $env:GITHUB_ENV -Append
+            }
+          } else {
+            Write-Warning "Inno Setup (ISCC.exe) wurde auf diesem Runner nicht unter '$iscc' gefunden - Installer-Schritt wird uebersprungen."
+          }
+
+      - name: GitHub Release erstellen und Dateien anhaengen
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          assets=("${{ env.ZIP_PATH }}")
+          if [ -n "${{ env.SETUP_PATH }}" ] && [ -f "${{ env.SETUP_PATH }}" ]; then
+            assets+=("${{ env.SETUP_PATH }}")
+          fi
+          gh release create "${{ github.ref_name }}" "${assets[@]}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes
