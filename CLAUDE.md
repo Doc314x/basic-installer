@@ -161,7 +161,11 @@ Secrets: Windows Credential Manager, target name `BasicInstaller_license_<app id
 ## Branding
 
 Icon (`assets/app.ico`, multi-resolution) and the "ℹ Über / Kontakt" popup's contact details were pulled
-from `https://as-ct.de` and its Impressum page. The site's email address is JavaScript-cloaked
-(renders as a literal "[email&nbsp;protected]"-style placeholder in raw HTML) and was deliberately **not**
-guessed/fabricated — `AboutDialog.cs` has a placeholder line for it with a comment explaining why. Fill
-in the real address there once you have it; don't invent one in the meantime.
+from `https://as-ct.de` and its Impressum page. The AI-summarized fetch of that page initially rendered
+the email as a literal "[email&nbsp;protected]"-style placeholder — a JS-cloaking artifact, not a real
+value — and it was deliberately **not** guessed/fabricated at that point. The real address
+(`info@as-ct.de`) was later recovered legitimately by downloading the Impressum page's raw HTML and
+decoding its Cloudflare `data-cfemail` hex attribute — a standard, intentionally reversible
+anti-scraping scheme (XOR each byte pair against the first byte as key), not a security measure to work
+around. If this page's contact details ever need re-pulling, prefer fetching raw HTML and checking for
+`data-cfemail` over trusting an AI-summarized fetch's rendering of the email field.

@@ -9,9 +9,10 @@ namespace BasicInstaller
     /// Kontakt-/Impressum-Popup. Bewusst getrennt vom Hauptfenster, damit
     /// dieses clean bleibt - nur über den "ℹ Über / Kontakt"-Link erreichbar.
     /// Quelle der Angaben: https://as-ct.de (Startseite + Impressum), Stand
-    /// Erstellung dieses Dialogs. Die E-Mail-Adresse ist auf der Webseite per
-    /// JavaScript verschleiert ("[email&#160;protected]"-Platzhalter) und wurde
-    /// deshalb bewusst NICHT geraten/erfunden - bitte unten manuell ergänzen.
+    /// Erstellung dieses Dialogs. Die E-Mail-Adresse stand dort nur als
+    /// Cloudflare-"data-cfemail"-Hex (reversible Anti-Scraping-Verschleierung,
+    /// keine echte Geheimhaltung) im HTML - kein erratener/erfundener Wert,
+    /// sondern aus der eigenen oeffentlichen Impressum-Seite dekodiert.
     /// </summary>
     public class AboutDialog : Form
     {
@@ -48,14 +49,13 @@ namespace BasicInstaller
             AddLine(layout, "44787 Bochum");
             AddLine(layout, "");
             AddLine(layout, "Telefon: +49 (0) 234 43 818 42");
-            AddLine(layout, "E-Mail: (bitte eintragen – Webseite verschleiert sie per JavaScript)", maxWidth: 328);
+
+            var email = new LinkLabel { Text = "info@as-ct.de", AutoSize = true, Margin = new Padding(0, 1, 0, 1) };
+            email.LinkClicked += (s, e) => OpenLink("mailto:info@as-ct.de");
+            layout.Controls.Add(email);
 
             var website = new LinkLabel { Text = "https://as-ct.de", AutoSize = true, Margin = new Padding(0, 4, 0, 0) };
-            website.LinkClicked += (s, e) =>
-            {
-                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://as-ct.de") { UseShellExecute = true }); }
-                catch { /* kein Browser verfuegbar - nicht kritisch */ }
-            };
+            website.LinkClicked += (s, e) => OpenLink("https://as-ct.de");
             layout.Controls.Add(website);
 
             var btnClose = new Button { Text = "Schließen", AutoSize = true, Anchor = AnchorStyles.Right };
@@ -66,6 +66,12 @@ namespace BasicInstaller
             Controls.Add(layout);
             Controls.Add(btnPanel);
             AcceptButton = btnClose;
+        }
+
+        private static void OpenLink(string target)
+        {
+            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(target) { UseShellExecute = true }); }
+            catch { /* kein Browser/Mail-Client verfuegbar - nicht kritisch */ }
         }
 
         private static void AddLine(TableLayoutPanel layout, string text, bool bold = false, float size = 9f, int maxWidth = 0)
