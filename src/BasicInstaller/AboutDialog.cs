@@ -19,17 +19,22 @@ namespace BasicInstaller
         public AboutDialog()
         {
             Text = "Über Basic Software Installer";
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
+            // Feste Pixelgroessen sind bei abweichender Windows-Textskalierung
+            // ein echtes Problem - AutoSize ist richtig, war nicht die Ursache
+            // des "verzerrten Fensters". Der Fehler war, Inhalt und Button-
+            // Leiste als zwei GETRENNTE andockende Controls direkt aufs Form
+            // zu setzen, was Form.AutoSize unzuverlaessig macht. Fix: beides in
+            // einem aeusseren TableLayoutPanel ("root" unten) zusammenfassen.
+            FormBorderStyle = FormBorderStyle.Sizable;
+            MaximizeBox = true;
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterParent;
             Font = new Font("Segoe UI", 9f);
-            // AutoSize statt fester ClientSize: eine feste Pixelgroesse war
-            // hier schon einmal zu knapp fuer die lange E-Mail-Platzhalter-
-            // Zeile (ohne Windows-GUI zum Testen nicht zuverlaessig vorhersagbar
-            // - gleiches Prinzip wie bei OptionsDialog/MainForm).
             AutoSize = true;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            MinimumSize = new Size(300, 140);
+            MaximumSize = new Size(600, 700);
+            AutoScroll = true;
 
             var layout = new TableLayoutPanel
             {
@@ -58,13 +63,21 @@ namespace BasicInstaller
             website.LinkClicked += (s, e) => OpenLink("https://as-ct.de");
             layout.Controls.Add(website);
 
-            var btnClose = new Button { Text = "Schließen", AutoSize = true, Anchor = AnchorStyles.Right };
+            var btnClose = new Button { Text = "Schließen", AutoSize = true };
             btnClose.Click += (s, e) => Close();
-            var btnPanel = new FlowLayoutPanel { Dock = DockStyle.Bottom, FlowDirection = FlowDirection.RightToLeft, AutoSize = true };
+            var btnPanel = new FlowLayoutPanel { Dock = DockStyle.Top, FlowDirection = FlowDirection.RightToLeft, AutoSize = true, Padding = new Padding(16, 8, 16, 8) };
             btnPanel.Controls.Add(btnClose);
 
-            Controls.Add(layout);
-            Controls.Add(btnPanel);
+            // EIN aeusserer Container fuer Inhalt + Button (siehe Kommentar
+            // oben) - einziges direktes Form-Kind, damit Form.AutoSize
+            // zuverlaessig greift.
+            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, AutoSize = true };
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.Controls.Add(layout, 0, 0);
+            root.Controls.Add(btnPanel, 0, 1);
+
+            Controls.Add(root);
             AcceptButton = btnClose;
         }
 

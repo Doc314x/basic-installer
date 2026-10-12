@@ -23,6 +23,14 @@ namespace BasicInstaller.Models
         public string LicenseKey { get; set; }
         public string InstalledVersion { get; private set; }
 
+        /// <summary>
+        /// Best-effort "verfuegbare" Version (siehe LatestVersionChecker) -
+        /// "–" bis zum ersten "Status aktualisieren"-Klick bzw. wenn fuer
+        /// diese App nicht ermittelbar. Wird nicht beim Start automatisch
+        /// geprueft (Netzlast/Tempo), nur auf Nutzeraktion.
+        /// </summary>
+        public string LatestVersion { get; set; } = "–";
+
         public bool PathEditable => !string.IsNullOrWhiteSpace(Source.path_arg_template);
         public bool LanguageSelectable => Source.languages != null && Source.languages.Count > 0;
 

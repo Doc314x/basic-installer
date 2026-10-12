@@ -33,13 +33,27 @@ namespace BasicInstaller
             _row = row;
 
             Text = "Optionen – " + row.Name;
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
+            // Feste Pixelgroessen sind bei abweichender Windows-Textskalierung/
+            // Schriftgroesse ein echtes Problem (zu Recht als Feedback
+            // gekommen) - AutoSize ist hier also richtig, NICHT das Problem.
+            // Der eigentliche Fehler war, Inhalt und Button-Leiste als zwei
+            // GETRENNTE andockende Controls direkt aufs Form zu setzen - das
+            // macht Form.AutoSize unzuverlaessig (anders als bei Panels).
+            // Fix: beides in EINEM aeusseren TableLayoutPanel zusammenfassen
+            // (siehe "root" unten) - damit hat das Form nur ein einziges Kind
+            // zu vermessen und AutoSize funktioniert wie erwartet. Sizable +
+            // AutoScroll bleiben als Sicherheitsnetz fuer Extremfaelle (riesige
+            // Schrift + viele Optionen gleichzeitig).
+            FormBorderStyle = FormBorderStyle.Sizable;
+            MaximizeBox = true;
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterParent;
             Font = new Font("Segoe UI", 9f);
             AutoSize = true;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            MinimumSize = new Size(320, 160);
+            MaximumSize = new Size(700, 800); // Sicherheitsnetz: ab hier scrollen statt endlos wachsen
+            AutoScroll = true;
             Padding = new Padding(0, 0, 0, 8);
 
             var layout = new TableLayoutPanel
@@ -166,16 +180,24 @@ namespace BasicInstaller
 
             var btnPanel = new FlowLayoutPanel
             {
-                Dock = DockStyle.Bottom,
+                Dock = DockStyle.Top,
                 FlowDirection = FlowDirection.RightToLeft,
                 AutoSize = true,
-                Padding = new Padding(16, 0, 16, 0),
+                Padding = new Padding(16, 8, 16, 8),
             };
             btnPanel.Controls.Add(btnOk);
             btnPanel.Controls.Add(btnCancel);
 
-            Controls.Add(btnPanel);
-            Controls.Add(layout);
+            // EIN aeusserer Container fuer Inhalt + Buttons (siehe Kommentar
+            // oben am Konstruktoranfang) - das ist der einzige direkte
+            // Form-Kind-Control, damit Form.AutoSize zuverlaessig greift.
+            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, AutoSize = true };
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.Controls.Add(layout, 0, 0);
+            root.Controls.Add(btnPanel, 0, 1);
+
+            Controls.Add(root);
             AcceptButton = btnOk;
             CancelButton = btnCancel;
         }

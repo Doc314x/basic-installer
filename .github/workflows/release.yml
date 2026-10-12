@@ -35,8 +35,43 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      # Versionsnummer kommt ab jetzt IMMER vom Git-Tag, nicht mehr von Hand
+      # aus der csproj. Vorher wurde bei jedem Release (v0.1.1, v0.1.2, v0.1.3)
+      # nur der Git-Tag erhoeht, die <Version> in BasicInstaller.csproj blieb
+      # faelschlich auf "0.1.0" stehen - Footer UND der Update-Check
+      # (vergleicht GitHub-Tag gegen die eingebaute Assembly-Version) zeigten
+      # dadurch dauerhaft die falsche installierte Version an. Bei einem
+      # Tag-Push (vX.Y.Z) wird das "v" abgeschnitten und per /p:Version an
+      # dotnet build durchgereicht; bei workflow_dispatch ohne Tag bleibt der
+      # csproj-Default (jeweils beim letzten Release von Hand aktualisiert).
+      - name: Versionsnummer aus Git-Tag ermitteln
+        id: version
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Release-Build
-        run: dotnet build src/BasicInstaller/BasicInstaller.csproj -c Release
+        shell: bash
+        run: |
+          # Copyright-Jahr kommt vom Build-Datum des Runners, damit "© 2026"
+          # nicht jedes Jahr von Hand in der csproj nachgezogen werden muss -
+          # der Fenster-Footer selbst nutzt ohnehin schon DateTime.Now.Year
+          # und ist davon unabhaengig immer aktuell.
+          year=$(date +%Y)
+          if [ -n "${{ steps.version.outputs.value }}" ]; then
+            dotnet build src/BasicInstaller/BasicInstaller.csproj -c Release \
+              -p:Version=${{ steps.version.outputs.value }} \
+              -p:AssemblyVersion=${{ steps.version.outputs.value }}.0 \
+              -p:FileVersion=${{ steps.version.outputs.value }}.0 \
+              -p:Copyright="© $year AS Computertechnik"
+          else
+            dotnet build src/BasicInstaller/BasicInstaller.csproj -c Release \
+              -p:Copyright="© $year AS Computertechnik"
+          fi
 
       # Code-Signing ist komplett optional und bricht ohne eingerichtete
       # Secrets nichts - siehe README/CLAUDE.md "Code-Signing" fuer die

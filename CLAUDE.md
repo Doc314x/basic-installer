@@ -238,6 +238,59 @@ clever one when you can't test it yourself.
   always shows at least the installed version, and both + a warning glyph when an update is sitting
   there unacted-on.
 
+## Round three: more real bugs, and one near-miss worth remembering
+
+- **`OptionsDialog`/`AboutDialog`/`PromptDialog` opened as tiny, "distorted" unreadable windows.**
+  Root cause: `Form.AutoSize = true` is unreliable specifically when the Form has **multiple
+  independently `Dock`-ed top-level children** (here: a content panel `Dock=Top` plus a button row
+  `Dock=Bottom`, added as two separate items to `Controls`) — it doesn't reliably account for both when
+  computing its own preferred size. **First fix attempt was wrong and got corrected by the user**: just
+  replacing `AutoSize` with a fixed `ClientSize` "solved" the distortion but reintroduced a worse,
+  genuinely-reported-before problem — fixed pixel sizes break for anyone running Windows at a larger
+  text-scaling/font-size setting (common accessibility setting, not an edge case). **The actual correct
+  fix**: keep `AutoSize = true` / `AutoSizeMode.GrowAndShrink` on the Form, but wrap the content panel
+  and the button row together in **one** outer `TableLayoutPanel` (two `AutoSize` rows) and add *that
+  single panel* as the Form's only direct child. With one child to measure, `Form.AutoSize` works
+  correctly. Keep `MinimumSize`/`MaximumSize` + `AutoScroll = true` + `FormBorderStyle.Sizable` as a
+  safety net for extreme cases (huge font scale + lots of dynamic content), not as the primary sizing
+  mechanism. **If you touch any dialog in this project again: don't reach for a fixed `ClientSize` as
+  the fix for a sizing bug** — the one-outer-container pattern is the one to use instead.
+- **`InstalledAppDetector` used `Registry.LocalMachine`/`Registry.CurrentUser`, which only see the
+  registry view matching the *calling process's own bitness*.** A 32-bit process reading
+  `HKLM\SOFTWARE\...\Uninstall` gets transparently (and silently — no error) redirected by Windows to
+  `HKLM\SOFTWARE\WOW6432Node\...\Uninstall` and can never see the native 64-bit view, and vice versa for
+  a 64-bit process reading the WOW6432Node path. This meant a genuinely-installed 64-bit app (e.g.
+  64-bit 7-Zip, the normal case today) could be invisible depending on which bitness the exe happened to
+  build/run as — a real, reported bug ("7-Zip hat er nicht erkannt, obwohl installiert"), not a
+  configuration gap like the earlier missing-`detect_display_name_contains` bug. Fixed by using
+  `RegistryKey.OpenBaseKey(hive, view)` with both `RegistryView.Registry64` and `RegistryView.Registry32`
+  explicitly for both `LocalMachine` and `CurrentUser` — four scans instead of relying on ambient
+  process bitness. Don't go back to the static `Registry.*` properties here.
+- **Two catalog `installer_url`s (`vlc`, `brave`) were simply dead** — both vendors had changed their
+  stable-link scheme since those entries were written, confirmed live via `curl` (VLC: 404 "not
+  available on our mirrors", the generic non-versioned filename is gone, only versioned filenames like
+  `vlc-3.0.24-win64.exe` exist now, same situation as IrfanView/WinRAR/7-Zip/Notepad++, `installer_url`
+  set back to `null` with notes; Brave: S3 404 "NoSuchKey", replaced with the still-live
+  `brave-browser-downloads.s3.brave.com/latest/brave_installer-x64.exe`, which is a different installer
+  variant than before and needed explicit `--silent --install --system-level` switches since it's not
+  the dedicated "StandaloneSilentSetup" build anymore). **Lesson: a "verified live" URL note in `notes`
+  has a shelf life — vendors change these without notice. If an install starts failing for an app whose
+  `notes` say a URL was checked on some past date, re-check it live before assuming the code is at
+  fault.**
+- **The embedded assembly version never actually matched the git tag.** `BasicInstaller.csproj`'s
+  `<Version>` stayed hardcoded at `0.1.0` through the `v0.1.1`/`v0.1.2`/`v0.1.3` tags — only the git tag
+  was bumped each time, not the csproj. This made the footer *and* `AutoUpdateService.IsNewer`'s
+  comparison silently wrong (comparing the real GitHub tag against an embedded version that was always
+  "0.1.0", which could make the self-update check think an update was always available, even right after
+  installing the latest one). Fixed at the CI level, not by remembering to hand-edit the csproj every
+  time: `release.yml` now extracts the version from the git tag (`refs/tags/vX.Y.Z`) and passes
+  `-p:Version=`/`-p:AssemblyVersion=`/`-p:FileVersion=` to `dotnet build`, so the embedded version is
+  always derived from the tag that triggered the build. Same pattern for `-p:Copyright`, built from the
+  runner's current year (`date +%Y`) instead of a hardcoded year in the csproj — the in-window footer
+  already used `DateTime.Now.Year` and was never affected, this was specifically about the exe's static
+  file-properties metadata. **Don't add a manual "remember to bump the version in the csproj" step back
+  in — keep deriving it from the tag in CI.**
+
 ## Configuration / Data Files
 
 All under `%APPDATA%\BasicInstaller\`:

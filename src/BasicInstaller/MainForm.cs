@@ -32,6 +32,7 @@ namespace BasicInstaller
         private DataGridViewTextBoxColumn _colName;
         private DataGridViewTextBoxColumn _colCategory;
         private DataGridViewTextBoxColumn _colInstalled;
+        private DataGridViewTextBoxColumn _colLatest;
         private DataGridViewTextBoxColumn _colPath;
         private DataGridViewButtonColumn _colOptions;
 
@@ -128,7 +129,12 @@ namespace BasicInstaller
             _btnCheckUpdate = new Button { Text = "🔄 Basic Installer selbst aktualisieren", AutoSize = true, Margin = new Padding(24, 0, 0, 0) };
             _btnSelectAll.Click += (s, e) => SetAllSelected(true);
             _btnSelectNone.Click += (s, e) => SetAllSelected(false);
-            _btnRefreshStatus.Click += (s, e) => RefreshAllInstalledVersions();
+            _btnRefreshStatus.Click += async (s, e) =>
+            {
+                _btnRefreshStatus.Enabled = false;
+                await RefreshAllInstalledVersionsAsync();
+                _btnRefreshStatus.Enabled = true;
+            };
             _btnPreload.Click += BtnPreload_Click;
             _btnCheckUpdate.Click += BtnCheckUpdate_Click;
             toolbar.Controls.Add(_btnSelectAll);
@@ -380,6 +386,17 @@ namespace BasicInstaller
                 FillWeight = 75,
                 ToolTipText = "Aus der Windows-Uninstall-Registry erkannte Version, '–' = nicht gefunden.",
             };
+            _colLatest = new DataGridViewTextBoxColumn
+            {
+                DataPropertyName = "LatestVersion",
+                HeaderText = "Verfügbar",
+                ReadOnly = true,
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+                FillWeight = 75,
+                ToolTipText = "Nur per 'Status aktualisieren' ermittelt, nicht automatisch beim Start - " +
+                               "und nur fuer Apps moeglich, deren Download-Link die Version in der finalen " +
+                               "URL zeigt. '–' heisst 'nicht ermittelbar', nicht 'kein Update'.",
+            };
             _colPath = new DataGridViewTextBoxColumn
             {
                 DataPropertyName = "InstallPath",
@@ -407,7 +424,7 @@ namespace BasicInstaller
             // und Lizenzschlüssel (nur noch im ⚙-Popup, nicht mehr als eigene
             // Spalte - beides auf Nutzerwunsch entfernt) sind bewusst KEINE
             // Grid-Spalten mehr.
-            _grid.Columns.AddRange(_colSelected, _colName, _colCategory, _colInstalled, _colPath, _colOptions);
+            _grid.Columns.AddRange(_colSelected, _colName, _colCategory, _colInstalled, _colLatest, _colPath, _colOptions);
             _grid.DataBindingComplete += Grid_DataBindingComplete;
             _grid.CurrentCellDirtyStateChanged += (s, e) =>
             {
@@ -708,14 +725,40 @@ namespace BasicInstaller
             _btnInstall.Enabled = !_busy && _rows != null && _rows.Any(r => r.Selected);
         }
 
-        private void RefreshAllInstalledVersions()
+        private async Task RefreshAllInstalledVersionsAsync()
         {
             foreach (var row in _rows)
-                row.RefreshInstalledVersion();
+                row.RefreshInstalledVersion(); // Registry-Scan ist synchron und schnell
+
+            _lblStatus.Text = "Prüfe verfügbare Versionen (nur für Apps mit erkennbarer URL) ...";
+
+            // Parallel statt sequenziell - bei 14 Katalog-Eintraegen waere ein
+            // 8-Sekunden-Timeout pro App sonst im ungluecklichsten Fall >100s.
+            var checks = _rows.Select(async row =>
+            {
+                var url = LanguageResolution.ResolveInstallerUrl(row.Source, row.SelectedLanguage);
+                row.LatestVersion = await LatestVersionChecker.TryGetLatestVersionAsync(url) ?? "–";
+            });
+            await Task.WhenAll(checks);
 
             foreach (DataGridViewRow gridRow in _grid.Rows)
-                if (gridRow.DataBoundItem is AppRow row)
-                    gridRow.Cells[_colInstalled.Index].Value = row.InstalledVersion;
+            {
+                if (!(gridRow.DataBoundItem is AppRow row)) continue;
+
+                gridRow.Cells[_colInstalled.Index].Value = row.InstalledVersion;
+                gridRow.Cells[_colLatest.Index].Value = row.LatestVersion;
+
+                // Dezente Hervorhebung, wenn beide Werte bekannt sind UND
+                // voneinander abweichen - genau das war die zweimal gestellte
+                // Nutzerfrage ("ob aktuell oder ob Update moeglich").
+                var updateAvailable = row.InstalledVersion != "–" && row.LatestVersion != "–"
+                    && row.InstalledVersion != row.LatestVersion;
+                gridRow.Cells[_colInstalled.Index].Style.ForeColor = updateAvailable ? Theme.AccentDark : Color.Empty;
+                gridRow.Cells[_colLatest.Index].Style.ForeColor = updateAvailable ? Theme.AccentDark : Color.Empty;
+                gridRow.Cells[_colLatest.Index].Style.Font = updateAvailable
+                    ? new Font(_grid.Font, FontStyle.Bold)
+                    : null;
+            }
 
             _lblStatus.Text = "Installationsstatus aktualisiert.";
         }

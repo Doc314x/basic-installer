@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Microsoft.Win32;
 
 namespace BasicInstaller.Services
@@ -12,16 +11,28 @@ namespace BasicInstaller.Services
     /// DisplayName-Werte haeufig Versionsnummern/Zusaetze enthalten
     /// ("Mozilla Firefox (x64 de)") und so kein exakter Vergleich moeglich ist.
     ///
-    /// Scannt HKLM (64-bit nativ + WOW6432Node fuer 32-bit-Apps) UND HKCU,
-    /// weil viele dieser Installer (Firefox, Brave, VLC-Stub teils) je nach
-    /// Aufruf per-Nutzer statt maschinenweit installieren koennen.
+    /// WICHTIG: nutzt bewusst NICHT die statischen Registry.LocalMachine/
+    /// Registry.CurrentUser-Properties. Die liefern nur die Registry-Ansicht
+    /// der EIGENEN Prozess-Bitness: ein 32-Bit-Prozess sieht
+    /// HKLM\SOFTWARE\...\Uninstall transparent umgeleitet auf
+    /// HKLM\SOFTWARE\WOW6432Node\...\Uninstall und bekommt den nativen
+    /// 64-Bit-Zweig NIE zu sehen (und umgekehrt) - ganz ohne Fehler, einfach
+    /// leer. Ein echtes 64-Bit-7-Zip (heute der Normalfall) waere so fuer
+    /// Basic Installer unsichtbar, je nachdem in welcher Bitness die exe
+    /// gerade laeuft. RegistryKey.OpenBaseKey(..., RegistryView.Registry64/32)
+    /// umgeht das: beide Ansichten werden explizit angefragt, unabhaengig
+    /// davon, wie die eigene exe kompiliert/gestartet wurde.
     /// </summary>
     public static class InstalledAppDetector
     {
-        private static readonly string[] UninstallRegistryPaths =
+        private const string UninstallPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall";
+
+        private static readonly (RegistryHive Hive, RegistryView View)[] Targets =
         {
-            @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
-            @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
+            (RegistryHive.LocalMachine, RegistryView.Registry64),
+            (RegistryHive.LocalMachine, RegistryView.Registry32),
+            (RegistryHive.CurrentUser, RegistryView.Registry64),
+            (RegistryHive.CurrentUser, RegistryView.Registry32),
         };
 
         /// <summary>
@@ -34,42 +45,57 @@ namespace BasicInstaller.Services
             if (string.IsNullOrWhiteSpace(displayNameContains))
                 return null;
 
-            foreach (var version in ScanHive(Registry.LocalMachine, displayNameContains))
-                return version;
-            foreach (var version in ScanHive(Registry.CurrentUser, displayNameContains))
-                return version;
+            foreach (var (hive, view) in Targets)
+            {
+                var version = ScanOneView(hive, view, displayNameContains);
+                if (version != null)
+                    return version;
+            }
+
             return null;
         }
 
-        private static IEnumerable<string> ScanHive(RegistryKey hive, string displayNameContains)
+        private static string ScanOneView(RegistryHive hive, RegistryView view, string displayNameContains)
         {
-            foreach (var path in UninstallRegistryPaths)
+            RegistryKey baseKey = null;
+            RegistryKey uninstallKey = null;
+            try
             {
-                RegistryKey uninstallKey = null;
-                try
+                baseKey = RegistryKey.OpenBaseKey(hive, view);
+                uninstallKey = baseKey.OpenSubKey(UninstallPath);
+                if (uninstallKey == null)
+                    return null;
+
+                foreach (var subKeyName in uninstallKey.GetSubKeyNames())
                 {
-                    uninstallKey = hive.OpenSubKey(path);
-                    if (uninstallKey == null) continue;
-
-                    foreach (var subKeyName in uninstallKey.GetSubKeyNames())
+                    using (var subKey = uninstallKey.OpenSubKey(subKeyName))
                     {
-                        using (var subKey = uninstallKey.OpenSubKey(subKeyName))
-                        {
-                            var displayName = subKey?.GetValue("DisplayName") as string;
-                            if (displayName == null) continue;
-                            if (displayName.IndexOf(displayNameContains, StringComparison.OrdinalIgnoreCase) < 0)
-                                continue;
+                        var displayName = subKey?.GetValue("DisplayName") as string;
+                        if (displayName == null) continue;
+                        if (displayName.IndexOf(displayNameContains, StringComparison.OrdinalIgnoreCase) < 0)
+                            continue;
 
-                            var version = subKey.GetValue("DisplayVersion") as string;
-                            if (!string.IsNullOrWhiteSpace(version))
-                                yield return version;
-                        }
+                        var version = subKey.GetValue("DisplayVersion") as string;
+                        if (!string.IsNullOrWhiteSpace(version))
+                            return version;
                     }
                 }
-                finally
-                {
-                    uninstallKey?.Dispose();
-                }
+
+                return null;
+            }
+            catch (Exception)
+            {
+                // Manche Hive/View-Kombinationen koennen in seltenen Faellen
+                // (Berechtigungen, Windows-Version) einen Zugriffsfehler werfen
+                // statt schlicht nichts zu finden - defensiv als "nicht
+                // gefunden" werten statt die komplette Erkennung mit einer
+                // Exception abzubrechen.
+                return null;
+            }
+            finally
+            {
+                uninstallKey?.Dispose();
+                baseKey?.Dispose();
             }
         }
     }

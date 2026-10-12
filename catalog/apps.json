@@ -6,15 +6,19 @@
       "name": "Brave Browser",
       "category": "Browser",
       "homepage": "https://brave.com",
-      "installer_url": "https://referrals.brave.com/latest/BraveBrowserStandaloneSilentSetup.exe",
+      "installer_url": "https://brave-browser-downloads.s3.brave.com/latest/brave_installer-x64.exe",
       "installer_type": "exe",
-      "silent_args": [],
+      "silent_args": [
+        "--silent",
+        "--install",
+        "--system-level"
+      ],
       "default_install_path": null,
       "path_arg_template": null,
       "sha256": null,
       "default_language": null,
       "languages": null,
-      "notes": "Silent-Setup von Brave installiert bereits ohne Rueckfrage; Installationspfad nicht per Kommandozeile umlenkbar. Sprache folgt der Windows-Systemsprache, ist beim Standalone-Installer nicht separat waehlbar -> 'languages' bewusst leer, GUI zeigt nur 'Standard (Systemsprache)'.",
+      "notes": "WICHTIG - Korrektur, live gefunden (12.10.2026): die vorherige installer_url (referrals.brave.com/latest/BraveBrowserStandaloneSilentSetup.exe) lieferte einen echten S3-404 (\"NoSuchKey\") - Brave hat diesen Link offenbar entfernt/umbenannt. Neue URL live getestet: brave-browser-downloads.s3.brave.com/latest/brave_installer-x64.exe antwortet 200 OK mit einer echten ~164-MB-Datei. Das ist der normale Omaha/Chromium-Updater-Installer (nicht mehr die dedizierte \"StandaloneSilentSetup\"-Variante) - deshalb jetzt explizite Silent-Switches (--silent --install), zusaetzlich --system-level fuer eine maschinenweite statt Pro-Benutzer-Installation (passend zu allen anderen Eintraegen hier). Installationspfad-Override hierfuer nicht bekannt -> path_arg_template weiter null.",
       "detect_display_name_contains": "Brave"
     },
     {
@@ -49,7 +53,7 @@
       "name": "VLC Media Player",
       "category": "Multimedia",
       "homepage": "https://www.videolan.org/vlc/",
-      "installer_url": "https://get.videolan.org/vlc/last/win64/vlc-win64.exe",
+      "installer_url": null,
       "installer_type": "exe",
       "silent_args": [
         "/S"
@@ -72,7 +76,7 @@
           ]
         }
       },
-      "notes": "Ein Installer fuer alle Sprachen; /L=<LCID> waehlt die UI-Sprache (1031=Deutsch, 1033=English US). Weitere LCIDs: https://learn.microsoft.com/windows/win32/intl/locale-identifiers",
+      "notes": "WICHTIG - Korrektur, live gefunden (12.10.2026): die vorherige installer_url (get.videolan.org/vlc/last/win64/vlc-win64.exe) lieferte einen echten 404 (\"not available on our mirrors\") - VLC hat den generischen, versionslosen Dateinamen offenbar eingestellt. Verzeichnis-Listing (download.videolan.org/vlc/last/win64/) zeigt nur noch versionierte Dateien (z.B. vlc-3.0.24-win64.exe) - keine stabile \"latest\"-URL mehr verfuegbar, genau wie bei IrfanView/WinRAR/7-Zip/Notepad++. installer_url jetzt ehrlich null statt eines kaputten Links - bei jedem Update manuell die aktuelle Versionsnummer eintragen (z.B. https://download.videolan.org/vlc/last/win64/vlc-3.0.24-win64.exe). /L=<LCID> und rarreg-unabhaengige Mechanik unveraendert korrekt.",
       "detect_display_name_contains": "VLC"
     },
     {
@@ -344,6 +348,25 @@
       "default_language": "de",
       "languages": null,
       "notes": "Laeuft ueber das Office Deployment Tool (ODT): setup.exe liest beim Start configuration.xml aus demselben Verzeichnis und zieht sich die eigentlichen Office-Binaries je nach Konfiguration selbst von Microsofts CDN (nicht die options_ini_template-Datei selbst ist die Installation, sie steuert nur, WAS setup.exe herunterlaedt). installer_url live getestet (12.10.2026, curl -I): officecdn.microsoft.com/pr/wsus/setup.exe liefert 200 OK mit echtem setup.exe (~7 MB) - 'wsus' ist die oeffentlich dokumentierte Standard-Branch-GUID, die in zahllosen Microsoft-/Community-Deployment-Anleitungen fuer exakt diesen Zweck verwendet wird. Architektur (x86/x64) ist ueber den neuen 'choice'-Options-Typ waehlbar (Vorgabe: x86, Nutzerwunsch), ersetzt {arch} direkt im OfficeClientEdition-Attribut. Produkt-ID O365ProPlusRetail = 'Microsoft 365 Apps for enterprise' (vormals 'ProPlus') - die ueblicherweise ueber Volumen-/CSP-Lizenzen bei Kunden eingesetzte Variante, NICHT 'Microsoft 365 Business Standard' (O365BusinessRetail); bei Bedarf Product-ID hier anpassen. Channel bewusst 'MonthlyEnterprise' (planbarere monatliche Updates statt taeglicher Current-Channel-Builds) - manuell im Template aenderbar. Groove (alter OneDrive-for-Business-Sync) und Lync (altes Skype for Business) sind als veraltete Komponenten fest ausgeschlossen; eine GUI-Checkbox pro Office-App (Access/Publisher/Teams etc.) ist mit dem aktuellen Options-Mechanismus NICHT sauber abbildbar, weil WriteOptionsIni nur Werte innerhalb einer Zeile ersetzt, nicht ganze XML-Zeilen bedingt ein-/ausblendet - das waere eine groessere Erweiterung (TODO), falls gewuenscht. license_type ist bewusst null: Aktivierung laeuft ueber Tenant-/Konto-Anmeldung, nicht ueber einen CLI-Key oder eine Lizenzdatei. default_install_path ist nur informativ, da Office C2R keinen Pfad-Override unterstuetzt -> path_arg_template bewusst null. detect_display_name_contains ist ein Best-Guess (Registry-DisplayName bei C2R-Installationen variiert je Sprache/Edition, z.B. 'Microsoft 365 Apps for enterprise - de-de') - vor Praxiseinsatz einmal an einer echten Installation gegenpruefen."
+    },
+    {
+      "id": "teams",
+      "name": "Microsoft Teams (neu)",
+      "category": "Kommunikation",
+      "homepage": "https://www.microsoft.com/microsoft-teams/",
+      "installer_url": "https://go.microsoft.com/fwlink/?linkid=2243204",
+      "installer_type": "exe",
+      "silent_args": [
+        "-p"
+      ],
+      "default_install_path": null,
+      "path_arg_template": null,
+      "license_type": null,
+      "detect_display_name_contains": null,
+      "sha256": null,
+      "default_language": null,
+      "languages": null,
+      "notes": "installer_url live getestet (12.10.2026, curl -IL): der offizielle Microsoft-Fwlink go.microsoft.com/fwlink/?linkid=2243204 leitet per 302 auf statics.teams.cdn.office.net/.../teamsbootstrapper.exe weiter (echte Datei, ~2 MB) - das ist der offiziell dokumentierte Weg fuer das \"neue Teams\" (MSIX-basiert, seit 2023; das alte MSI-basierte Teams hat Microsoft 2024 endgueltig abgeschaltet - ein darauf basierender Katalogeintrag waere nutzlos). -p provisioniert Teams maschinenweit und laedt das MSIX-Paket selbst online nach (kein separates MSIX-Dateiargument noetig). WICHTIG - echte strukturelle Einschraenkung, kein Platzhalter-Unwissen: detect_display_name_contains ist bewusst null, weil InstalledAppDetector nur die klassische Uninstall-Registry scannt - ein per -p provisioniertes MSIX-Paket landet dort NICHT (MSIX-Pakete werden ueber den Windows-AppX-Paketspeicher verwaltet, nicht die Uninstall-Registry). Installiert-Spalte zeigt fuer Teams deshalb immer \"-\", auch wenn es laeuft - das ist korrekt und kein Bug, solange InstalledAppDetector nicht um eine AppX/MSIX-Abfrage erweitert wird (z.B. via Get-AppxPackage-Aequivalent/PackageManager-API). default_install_path/path_arg_template bewusst null: MSIX-Pakete installieren an einen festen, nicht waehlbaren Ort. Kein Lizenzmechanismus (laeuft ueber Tenant-Anmeldung wie Office 365)."
     }
   ]
 }
