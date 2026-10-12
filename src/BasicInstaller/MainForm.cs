@@ -44,7 +44,7 @@ namespace BasicInstaller
         private Button _btnSaveProfile;
         private Button _btnDeleteProfile;
         private ComboBox _cmbGlobalLanguage;
-        private CheckBox _chkSkipInstalled;
+        private Label _lblVersionStatus;
         private Button _btnInstall;
         private ProgressBar _progressBar;
         private Label _lblStatus;
@@ -73,6 +73,7 @@ namespace BasicInstaller
             Size = new Size(1040, 720);
             StartPosition = FormStartPosition.CenterScreen;
             Font = new Font("Segoe UI", 9f);
+            BackColor = Theme.PageBackground;
             try { Icon = new Icon(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app.ico")); }
             catch { /* Icon ist rein kosmetisch - ein fehlendes app.ico darf den Start nicht verhindern */ }
 
@@ -98,6 +99,7 @@ namespace BasicInstaller
             {
                 Text = "Basic Software Installer",
                 Font = new Font("Segoe UI", 14f, FontStyle.Bold),
+                ForeColor = Theme.AccentDark,
                 AutoSize = true,
             });
             header.Controls.Add(new Label
@@ -169,19 +171,25 @@ namespace BasicInstaller
 
             BuildGrid();
 
+            // War vorher eine Checkbox "Bereits installierte Programme
+            // überspringen" - auf Nutzer-Feedback entfernt ("warum sollte man
+            // das optional auswählen können"): Skip ist jetzt fest, keine
+            // Abwahl mehr nötig/möglich. Die Zeile zeigt statt der Checkbox nun
+            // dauerhaft den Basic-Installer-Versionsstatus (vorher nur in einer
+            // MessageBox sichtbar, wenn man aktiv auf den Button klickte).
             var optionsBar = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 Padding = new Padding(12, 4, 12, 0),
             };
-            _chkSkipInstalled = new CheckBox
+            _lblVersionStatus = new Label
             {
-                Text = "Bereits installierte Programme überspringen (kein erneuter Download/Install)",
                 AutoSize = true,
-                Checked = true,
+                ForeColor = Color.DimGray,
+                Text = $"Basic Installer: installiert v{FormatAssemblyVersion()}",
             };
-            optionsBar.Controls.Add(_chkSkipInstalled);
+            optionsBar.Controls.Add(_lblVersionStatus);
 
             var installBar = new TableLayoutPanel
             {
@@ -197,11 +205,17 @@ namespace BasicInstaller
             {
                 Text = "Installieren",
                 AutoSize = true,
-                Height = 30,
-                Width = 140,
+                Height = 32,
+                Width = 150,
                 Enabled = false,
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Theme.Accent,
+                ForeColor = Theme.OnAccent,
             };
+            _btnInstall.FlatAppearance.BorderSize = 0;
+            _btnInstall.FlatAppearance.MouseOverBackColor = Theme.AccentDark;
+            _btnInstall.FlatAppearance.MouseDownBackColor = Theme.AccentDark;
             _btnInstall.Click += BtnInstall_Click;
             installBar.Controls.Add(_progressBar, 0, 0);
             installBar.Controls.Add(_btnInstall, 1, 0);
@@ -238,7 +252,7 @@ namespace BasicInstaller
             };
             footerBar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             footerBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            _lnkAbout = new LinkLabel { Text = "ℹ Über / Kontakt", AutoSize = true };
+            _lnkAbout = new LinkLabel { Text = "ℹ Über / Kontakt", AutoSize = true, LinkColor = Theme.AccentDark, ActiveLinkColor = Theme.Accent };
             _lnkAbout.LinkClicked += (s, e) => ShowAboutDialog();
             _lblFooter = new Label
             {
@@ -311,6 +325,27 @@ namespace BasicInstaller
                 EditMode = DataGridViewEditMode.EditOnEnter,
                 BackgroundColor = SystemColors.Window,
                 BorderStyle = BorderStyle.None,
+                // EnableHeadersVisualStyles=false ist Pflicht, sonst ignoriert
+                // Windows die ColumnHeadersDefaultCellStyle-Farben komplett und
+                // rendert den systemeigenen (grauen) Header-Stil.
+                EnableHeadersVisualStyles = false,
+                ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
+                {
+                    BackColor = Theme.Accent,
+                    ForeColor = Theme.OnAccent,
+                    Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                    SelectionBackColor = Theme.Accent,
+                    SelectionForeColor = Theme.OnAccent,
+                    Alignment = DataGridViewContentAlignment.MiddleLeft,
+                },
+                ColumnHeadersHeight = 30,
+                AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.FromArgb(0xF7, 0xF7, 0xF7) },
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    SelectionBackColor = Theme.AccentLight,
+                    SelectionForeColor = Color.Black,
+                },
+                GridColor = Color.FromArgb(0xE3, 0xE3, 0xE3),
             };
 
             _colSelected = new DataGridViewCheckBoxColumn
@@ -358,8 +393,13 @@ namespace BasicInstaller
                 HeaderText = "",
                 Text = "⚙",
                 UseColumnTextForButtonValue = true,
-                AutoSizeMode = DataGridViewAutoSizeColumnMode.ColumnHeader,
-                Width = 36,
+                // BUG (gefunden im Praxistest): AutoSizeMode.ColumnHeader sizt die
+                // Spalte auf die Breite des (hier leeren) Headers - Width=36 wurde
+                // dadurch beim Layout ignoriert und die Spalte auf nahezu 0px
+                // zusammengeschrumpft, das Zahnrad war unsichtbar. "None" laesst
+                // die explizite Width tatsaechlich gelten.
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
+                Width = 40,
                 ToolTipText = "Optionen/Lizenz - nur sichtbar wenn fürs Programm verfügbar.",
             };
 
@@ -701,10 +741,14 @@ namespace BasicInstaller
                 _lblStatus.Text = $"Bearbeite {row.Name} ({done + 1}/{selected.Count}) ...";
                 AppendLog($"=== {row.Name} ===");
 
-                if (_chkSkipInstalled.Checked && row.InstalledVersion != "–")
+                if (row.InstalledVersion != "–")
                 {
-                    AppendLog($"Übersprungen: bereits installiert (Version {row.InstalledVersion}). " +
-                              "Häkchen oben entfernen, um trotzdem neu zu installieren/zu aktualisieren.");
+                    // Fest, nicht mehr abwaehlbar (Nutzer-Feedback: ohne
+                    // Versionsvergleich zur "aktuellsten" Version bringt eine
+                    // Checkbox hier nur Verwirrung). Fuer eine erzwungene
+                    // Neuinstallation bleibt "Status aktualisieren" nach einer
+                    // manuellen Deinstallation der naheliegende Weg.
+                    AppendLog($"Übersprungen: bereits installiert (Version {row.InstalledVersion}).");
                     skipped++;
                 }
                 else
@@ -850,7 +894,6 @@ namespace BasicInstaller
             _btnRefreshStatus.Enabled = !busy;
             _btnPreload.Enabled = !busy;
             _btnCheckUpdate.Enabled = !busy;
-            _chkSkipInstalled.Enabled = !busy;
             _cmbProfiles.Enabled = !busy;
             _btnSaveProfile.Enabled = !busy;
             _btnDeleteProfile.Enabled = !busy && _cmbProfiles.SelectedIndex > 0;
@@ -884,6 +927,9 @@ namespace BasicInstaller
             if (release == null)
             {
                 _lblStatus.Text = "Bereit.";
+                // Ohne erfolgreiche Pruefung bleibt der Status unveraendert
+                // (zeigt weiterhin nur die installierte Version) - kein "unbekannt"
+                // vorgaukeln, wenn wir schlicht nicht nachsehen konnten.
                 if (interactive)
                 {
                     // AutoUpdateService.LastCheckError nennt den tatsaechlichen Grund
@@ -901,12 +947,19 @@ namespace BasicInstaller
             if (!AutoUpdateService.IsNewer(release.Version, localVersion))
             {
                 _lblStatus.Text = "Bereit.";
+                _lblVersionStatus.Text = $"Basic Installer: installiert v{localVersion} (aktuell)";
+                _lblVersionStatus.ForeColor = Color.DimGray;
                 if (interactive)
                     MessageBox.Show(this, $"Du hast bereits die aktuelle Version ({localVersion}).",
                         "Basic Installer", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
+            // Ab hier steht fest: ein Update ist da - Status bleibt auch nach
+            // dem Dialog sichtbar (vorher stand das NUR in der MessageBox, war
+            // danach wieder weg, falls man "Nein" klickte).
+            _lblVersionStatus.Text = $"Basic Installer: installiert v{localVersion} · verfügbar: v{release.Version} ⚠";
+            _lblVersionStatus.ForeColor = Theme.AccentDark;
             _lblStatus.Text = "Bereit.";
             var answer = MessageBox.Show(this,
                 $"Version {release.Version} ist verfügbar (installiert: {localVersion}).\n\n" +

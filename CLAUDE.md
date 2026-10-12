@@ -211,6 +211,33 @@ window. Treat any claim about dropdown/data-binding/layout behavior as unverifie
 confirms it on real Windows, and prefer the simplest, most well-established WinForms pattern over a
 clever one when you can't test it yourself.
 
+## Round two of real bugs (same lesson, different control)
+
+- **The ⚙ column was invisible** because its `AutoSizeMode` was `ColumnHeader` with an empty
+  `HeaderText` — that mode sizes the column to fit the header text, so an empty header collapsed it to
+  near-zero width and silently overrode the `Width = 40` set right next to it. `AutoSizeMode.None` is
+  what actually respects an explicit `Width`; `ColumnHeader`/`Fill`/etc. all override it. If a column
+  ever looks explicitly sized but doesn't show up right, check `AutoSizeMode` before suspecting anything
+  else about that column.
+- **The "skip already-installed" checkbox was removed entirely, not just unchecked by default** — user
+  feedback was that toggling it made no real sense without also knowing whether the installed version is
+  *outdated* (which this project doesn't detect — see `InstalledAppDetector`, it only reports presence +
+  version string, never compares against a "latest" value). Skipping an already-detected install is now
+  unconditional in `BtnInstall_Click`. Don't resurrect this checkbox without also building real
+  version-comparison first — otherwise it's back to being a toggle with no good reason to ever use it.
+- **`Theme.cs`** holds the one accent color (`#FF914D`, extracted from `assets/as-ct-logo.png`'s only
+  non-white pixels) used sparingly: the Installieren button, the DataGridView column headers (needs
+  `EnableHeadersVisualStyles = false` or the OS header style silently wins over
+  `ColumnHeadersDefaultCellStyle`), row selection tint, and link colors. Deliberately not applied to
+  every control — a small UI like this reads as "designed" with one accent used consistently, not
+  "painted" with color everywhere.
+- **The self-update version status moved from a one-shot `MessageBox` to a persistent label**
+  (`_lblVersionStatus`, in the row that used to hold the skip checkbox) because showing "installiert vs.
+  verfügbar" only inside a dialog that appears once (and only if you click the button, or at startup if
+  an update happens to exist) meant the two version numbers were invisible the rest of the time. It now
+  always shows at least the installed version, and both + a warning glyph when an update is sitting
+  there unacted-on.
+
 ## Configuration / Data Files
 
 All under `%APPDATA%\BasicInstaller\`:
