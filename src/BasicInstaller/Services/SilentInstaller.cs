@@ -42,14 +42,14 @@ namespace BasicInstaller.Services
             string installPathOverride,
             string languageCode,
             string licenseValue,
-            Dictionary<string, bool> options)
+            Dictionary<string, string> optionSubstitutions)
         {
             string optionsIniPath = null;
             if (!string.IsNullOrWhiteSpace(app.options_ini_template) && !string.IsNullOrWhiteSpace(app.options_ini_filename))
             {
                 try
                 {
-                    optionsIniPath = WriteOptionsIni(app, installerPath, options);
+                    optionsIniPath = WriteOptionsIni(app, installerPath, optionSubstitutions);
                 }
                 catch (Exception ex)
                 {
@@ -162,17 +162,15 @@ namespace BasicInstaller.Services
             return result;
         }
 
-        private static string WriteOptionsIni(AppEntry app, string installerPath, Dictionary<string, bool> options)
+        private static string WriteOptionsIni(AppEntry app, string installerPath, Dictionary<string, string> substitutions)
         {
+            // Bool- und Choice-Optionen sind bereits in AppRow.BuildOptionSubstitutions
+            // zu einheitlichen Strings zusammengefuehrt (bool -> "1"/"0", choice ->
+            // der gewaehlte Wert woertlich) - hier nur noch reine Textersetzung.
             var content = app.options_ini_template;
-            if (app.options != null)
-            {
-                foreach (var option in app.options)
-                {
-                    var value = options != null && options.TryGetValue(option.key, out var v) && v ? "1" : "0";
-                    content = content.Replace("{" + option.key + "}", value);
-                }
-            }
+            if (substitutions != null)
+                foreach (var kv in substitutions)
+                    content = content.Replace("{" + kv.Key + "}", kv.Value);
 
             var iniPath = Path.Combine(Path.GetDirectoryName(installerPath) ?? ".", app.options_ini_filename);
             File.WriteAllText(iniPath, content, Encoding.Default);

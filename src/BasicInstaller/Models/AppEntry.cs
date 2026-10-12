@@ -15,15 +15,29 @@ namespace BasicInstaller.Models
     }
 
     /// <summary>
-    /// Eine einzelne, vom Nutzer an-/abwählbare Installationsoption (Checkbox),
-    /// z.B. "In Explorer-Kontextmenü integrieren" bei WinRAR. Der "key" ist der
-    /// Platzhaltername, der in options_ini_template durch "0"/"1" ersetzt wird.
+    /// Eine einzelne, vom Nutzer einstellbare Installationsoption. Der "key"
+    /// ist der Platzhaltername, der in options_ini_template ersetzt wird.
+    ///
+    /// type == null oder "bool" (Default): einfache Checkbox, z.B. "In
+    /// Explorer-Kontextmenü integrieren" bei WinRAR - {key} wird durch "1"/"0"
+    /// ersetzt.
+    ///
+    /// type == "choice": Auswahl zwischen mehreren festen Werten (z.B.
+    /// Architektur x86/x64 bei Office 365) - {key} wird durch den gewählten
+    /// Wert aus choice_values ersetzt (nicht durch "1"/"0"). choice_labels muss
+    /// gleich viele Einträge wie choice_values haben (gleiche Reihenfolge,
+    /// fürs Dropdown/die Radiobuttons in OptionsDialog); default_choice muss
+    /// einer der choice_values sein.
     /// </summary>
     public class AppOption
     {
         public string key { get; set; }
         public string label { get; set; }
         public bool default_value { get; set; }
+        public string type { get; set; }
+        public string[] choice_values { get; set; }
+        public string[] choice_labels { get; set; }
+        public string default_choice { get; set; }
     }
 
     /// <summary>

@@ -83,7 +83,7 @@ schlicht: kein Auto-Update, keine halbe Lösung mit eingebettetem Secret.
 | `license_type` | `"cli_arg"` (Schlüssel als zusätzlicher Switch) \| `"key_file"` (Lizenzdatei wird nach der Installation ins Zielverzeichnis geschrieben) \| `null` |
 | `license_key_arg_template` | nur bei `cli_arg`, z. B. `"--license-key={key}"` |
 | `license_file_name` | nur bei `key_file`, z. B. `"rarreg.key"` |
-| `options` | Array `{key, label, default_value}` – Checkboxen für Installationsoptionen, optional |
+| `options` | Array von Installationsoptionen, optional. `type` fehlt/`"bool"`: Checkbox `{key, label, default_value}`. `type: "choice"`: Auswahl `{key, label, type:"choice", choice_values, choice_labels, default_choice}` (z. B. Architektur x86/x64 bei Office 365) |
 | `options_ini_template`, `options_ini_filename` | wenn gesetzt: INI-Inhalt (mit `{key}`-Platzhaltern, werden durch `1`/`0` ersetzt) wird vor dem Install neben den Installer gelegt |
 | `detect_display_name_contains` | Teilstring, der gegen `DisplayName` in der Windows-Uninstall-Registry gematcht wird, um die installierte Version zu finden |
 | `default_language`, `languages` | optionale Sprachvarianten: `languages` ist ein Dictionary `{sprachcode: {installer_url, extra_args}}`, das `installer_url`/`silent_args` der App überschreibt bzw. ergänzt |

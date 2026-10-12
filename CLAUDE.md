@@ -81,16 +81,23 @@ property to `false` **on the cell** to actually override the column default. See
   project's append-status rule).
 
 **Per-app install options are generated at install time, never shipped as static files.** An app can
-declare `options` (checkboxes) + `options_ini_template` + `options_ini_filename`. Before running the
-installer, `SilentInstaller.WriteOptionsIni` substitutes each `{key}` in the template with `"1"`/`"0"`
-from the current `AppRow.Options` dict and writes the result next to the downloaded installer, then
-deletes it again in a `finally` after the run. This means the *entire* INI structure (section names, key
-names) lives in `catalog/apps.json`, editable without touching code — important because a vendor can
-change their INI format and you don't want to rebuild/redeploy the app just to fix that. The WinRAR
-catalog entry's `options_ini_template` is explicitly flagged in its `notes` as a best-effort placeholder
-— the *mechanism* (drop a file next to the installer, then run `/S`) is the documented, correct approach,
-but the exact section/key names were not verified live against a real WinRAR silent-install run. Check
-before relying on it in production, and update the `notes` once verified either way.
+declare `options` (`AppOption[]`) + `options_ini_template` + `options_ini_filename`. Two option kinds:
+`type` omitted/`"bool"` is a checkbox (`AppRow.Options`, substituted as `"1"`/`"0"`); `type: "choice"` is
+a fixed set of named string values (`AppRow.ChoiceOptions`, substituted literally — e.g. Office 365's
+`arch` option becomes `OfficeClientEdition="32"` or `"64"` inside its `configuration.xml`). Both are
+merged into one `Dictionary<string,string>` by `AppRow.BuildOptionSubstitutions()` before
+`SilentInstaller.WriteOptionsIni` does pure `{key}` → value text substitution and writes the result next
+to the downloaded installer, deleting it again in a `finally` after the run. This means the *entire*
+generated-file structure (WinRAR's `WinRAR.ini` sections, Office's ODT `configuration.xml`) lives in
+`catalog/apps.json`, editable without touching code — important because a vendor can change their config
+format and you don't want to rebuild/redeploy the app just to fix that. Known limitation (see the
+`office365` entry's `notes`): a `choice`/`bool` value can only replace text *inside* a line — it cannot
+make a whole XML element conditionally appear or disappear, so per-component install toggles (e.g.
+"exclude Access") aren't expressible yet; that would need a real template-engine upgrade, not attempted
+here. The WinRAR catalog entry's `options_ini_template` section/key names are explicitly flagged in its
+`notes` as an unverified placeholder after a real search found no authoritative source for them — the
+*mechanism* (drop a file next to the installer, then run `/S`) is confirmed correct, the exact keys are
+not. Check before relying on it in production, and update the `notes` once verified either way.
 
 **`InstalledAppDetector` scans both `HKLM` (native + `WOW6432Node`) and `HKCU`.** Several of these
 vendor installers (Firefox, Brave, sometimes VLC) can install either per-machine or per-user depending

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Windows.Forms;
 using BasicInstaller.Models;
 using BasicInstaller.Services;
@@ -21,6 +22,7 @@ namespace BasicInstaller
     {
         private readonly AppRow _row;
         private readonly Dictionary<string, CheckBox> _optionCheckboxes = new Dictionary<string, CheckBox>();
+        private readonly Dictionary<string, List<RadioButton>> _choiceRadios = new Dictionary<string, List<RadioButton>>();
         private TextBox _txtLicense;
         private CheckBox _chkRemember;
 
@@ -59,6 +61,38 @@ namespace BasicInstaller
 
                 foreach (var option in row.Source.options)
                 {
+                    if (option.type == "choice")
+                    {
+                        layout.Controls.Add(new Label { Text = option.label, AutoSize = true, Margin = new Padding(8, 4, 0, 0) });
+
+                        var currentChoice = row.ChoiceOptions.TryGetValue(option.key, out var savedChoice)
+                            ? savedChoice
+                            : option.default_choice;
+
+                        var choicePanel = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(16, 0, 0, 4) };
+                        var radios = new List<RadioButton>();
+                        for (var i = 0; i < option.choice_values.Length; i++)
+                        {
+                            var value = option.choice_values[i];
+                            var radioLabel = option.choice_labels != null && i < option.choice_labels.Length
+                                ? option.choice_labels[i]
+                                : value;
+                            var radio = new RadioButton
+                            {
+                                Text = radioLabel,
+                                AutoSize = true,
+                                Checked = value == currentChoice,
+                                Margin = new Padding(0, 0, 16, 0),
+                                Tag = value,
+                            };
+                            radios.Add(radio);
+                            choicePanel.Controls.Add(radio);
+                        }
+                        _choiceRadios[option.key] = radios;
+                        layout.Controls.Add(choicePanel);
+                        continue;
+                    }
+
                     var hasSaved = row.Options.TryGetValue(option.key, out var savedValue);
                     var chk = new CheckBox
                     {
@@ -150,6 +184,13 @@ namespace BasicInstaller
         {
             foreach (var kv in _optionCheckboxes)
                 _row.Options[kv.Key] = kv.Value.Checked;
+
+            foreach (var kv in _choiceRadios)
+            {
+                var chosen = kv.Value.FirstOrDefault(r => r.Checked);
+                if (chosen != null)
+                    _row.ChoiceOptions[kv.Key] = (string)chosen.Tag;
+            }
 
             if (_row.LicenseKeyEditable)
             {

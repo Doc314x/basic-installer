@@ -23,14 +23,22 @@
       "homepage": "https://www.mozilla.org/firefox/",
       "installer_url": "https://download.mozilla.org/?product=firefox-latest-ssl&os=win64&lang=de",
       "installer_type": "exe",
-      "silent_args": ["-ms"],
+      "silent_args": [
+        "-ms"
+      ],
       "default_install_path": "%ProgramFiles%\\Mozilla Firefox",
       "path_arg_template": "/InstallDirectoryPath={path}",
       "sha256": null,
       "default_language": "de",
       "languages": {
-        "de": { "installer_url": "https://download.mozilla.org/?product=firefox-latest-ssl&os=win64&lang=de", "extra_args": null },
-        "en-US": { "installer_url": "https://download.mozilla.org/?product=firefox-latest-ssl&os=win64&lang=en-US", "extra_args": null }
+        "de": {
+          "installer_url": "https://download.mozilla.org/?product=firefox-latest-ssl&os=win64&lang=de",
+          "extra_args": null
+        },
+        "en-US": {
+          "installer_url": "https://download.mozilla.org/?product=firefox-latest-ssl&os=win64&lang=en-US",
+          "extra_args": null
+        }
       },
       "notes": "Stub-Installer, laedt bei Ausfuehrung die zur lang=-URL passende Version nach. Weitere Locales einfach nach gleichem Muster ergaenzen."
     },
@@ -41,14 +49,26 @@
       "homepage": "https://www.videolan.org/vlc/",
       "installer_url": "https://get.videolan.org/vlc/last/win64/vlc-win64.exe",
       "installer_type": "exe",
-      "silent_args": ["/S"],
+      "silent_args": [
+        "/S"
+      ],
       "default_install_path": "%ProgramFiles%\\VideoLAN\\VLC",
       "path_arg_template": "/D={path}",
       "sha256": null,
       "default_language": "de",
       "languages": {
-        "de": { "installer_url": null, "extra_args": ["/L=1031"] },
-        "en": { "installer_url": null, "extra_args": ["/L=1033"] }
+        "de": {
+          "installer_url": null,
+          "extra_args": [
+            "/L=1031"
+          ]
+        },
+        "en": {
+          "installer_url": null,
+          "extra_args": [
+            "/L=1033"
+          ]
+        }
       },
       "notes": "Ein Installer fuer alle Sprachen; /L=<LCID> waehlt die UI-Sprache (1031=Deutsch, 1033=English US). Weitere LCIDs: https://learn.microsoft.com/windows/win32/intl/locale-identifiers"
     },
@@ -59,7 +79,9 @@
       "homepage": "https://www.irfanview.com/",
       "installer_url": null,
       "installer_type": "exe",
-      "silent_args": ["/silent"],
+      "silent_args": [
+        "/silent"
+      ],
       "default_install_path": "%ProgramFiles%\\IrfanView",
       "path_arg_template": "/dir={path}",
       "sha256": null,
@@ -74,14 +96,25 @@
       "homepage": "https://get.adobe.com/reader/",
       "installer_url": null,
       "installer_type": "exe",
-      "silent_args": ["/sAll", "/msi", "EULA_ACCEPT=YES", "/qn"],
+      "silent_args": [
+        "/sAll",
+        "/msi",
+        "EULA_ACCEPT=YES",
+        "/qn"
+      ],
       "default_install_path": null,
       "path_arg_template": null,
       "sha256": null,
       "default_language": "de",
       "languages": {
-        "de": { "installer_url": null, "extra_args": null },
-        "en": { "installer_url": null, "extra_args": null }
+        "de": {
+          "installer_url": null,
+          "extra_args": null
+        },
+        "en": {
+          "installer_url": null,
+          "extra_args": null
+        }
       },
       "notes": "Adobe bietet keine stabile Direct-Download-URL fuer die jeweils neueste Version; installer_url je Sprachvariante manuell setzen (Adobe liefert sprachspezifische Installer-Dateien, z.B. ..._de_DE.exe / ..._en_US.exe - URL hier je Locale eintragen)."
     },
@@ -92,7 +125,11 @@
       "homepage": "https://www.eset.com/",
       "installer_url": null,
       "installer_type": "exe",
-      "silent_args": ["--silent", "--accepteula", "--enable-pua=1"],
+      "silent_args": [
+        "--silent",
+        "--accepteula",
+        "--enable-pua=1"
+      ],
       "default_install_path": null,
       "path_arg_template": null,
       "license_type": "cli_arg",
@@ -100,8 +137,14 @@
       "sha256": null,
       "default_language": "de",
       "languages": {
-        "de": { "installer_url": null, "extra_args": null },
-        "en": { "installer_url": null, "extra_args": null }
+        "de": {
+          "installer_url": null,
+          "extra_args": null
+        },
+        "en": {
+          "installer_url": null,
+          "extra_args": null
+        }
       },
       "notes": "ESET bietet keine anonyme Trial-Direct-URL wie Brave/VLC: installer_url muss aus dem ESET-/MSP-Account geladen werden (dort auch je Sprache getrennt verfuegbar). Genaue Schalter je Version vor Produktiveinsatz gegen die offizielle ESET-Silent-Install-Doku pruefen - hier nur als Platzhalter gepflegt. Korrektur: der Lizenzschluessel stand vorher als fest eingebackener Platzhalter ('--license-key=PLACEHOLDER-LICENSE-KEY') in silent_args und wurde nie durch den tatsaechlich eingegebenen Schluessel ersetzt - license_type war zudem gar nicht gesetzt, wodurch die Lizenz-Spalte in der GUI gesperrt blieb. Jetzt per license_type=cli_arg + license_key_arg_template korrekt angebunden (SilentInstaller.cs haengt den Schluessel nur an, wenn tatsaechlich einer eingegeben wurde; leeres Feld = Installation ohne --license-key, Produkt bleibt unaktiviert statt mit einem bedeutungslosen Platzhalter zu laufen). Policy-Vorgabe AS Computertechnik: Erkennung potenziell unerwuenschter Anwendungen (PUA) ist bewusst aktiviert (--enable-pua=1, in der ESET-Kommandozeilen-Doku so dokumentiert). Die Rueckmeldung an ESET (LiveGrid-Reputationssystem) soll dagegen deaktiviert sein - dafuer reicht laut ESET-Doku kein einfacher CLI-Switch wie bei --enable-pua, das laeuft ueber die erweiterte XML-Config (--cfg=...). Absichtlich NICHT geraten: kein --enable-livegrid=0 o.ae. eingetragen, weil das ein unverifizierter Flag-Name waere. Offener Punkt: vor Produktiveinsatz das korrekte --cfg=-XML-Setup fuer LiveGrid=aus ermitteln und hier ergaenzen."
     },
@@ -112,17 +155,39 @@
       "homepage": "https://www.win-rar.com/",
       "installer_url": null,
       "installer_type": "exe",
-      "silent_args": ["/S"],
+      "silent_args": [
+        "/S"
+      ],
       "default_install_path": "%ProgramFiles%\\WinRAR",
       "path_arg_template": null,
       "license_type": "key_file",
       "license_file_name": "rarreg.key",
       "options": [
-        { "key": "shell_integration", "label": "In Explorer-Kontextmenü integrieren", "default_value": true },
-        { "key": "cascaded_menu", "label": "Kontextmenü als Untermenü anzeigen", "default_value": false },
-        { "key": "assoc_rar", "label": "Dateityp .rar zuordnen", "default_value": true },
-        { "key": "assoc_zip", "label": "Dateityp .zip zuordnen", "default_value": false },
-        { "key": "assoc_7z", "label": "Dateityp .7z zuordnen", "default_value": false }
+        {
+          "key": "shell_integration",
+          "label": "In Explorer-Kontextmenü integrieren",
+          "default_value": true
+        },
+        {
+          "key": "cascaded_menu",
+          "label": "Kontextmenü als Untermenü anzeigen",
+          "default_value": false
+        },
+        {
+          "key": "assoc_rar",
+          "label": "Dateityp .rar zuordnen",
+          "default_value": true
+        },
+        {
+          "key": "assoc_zip",
+          "label": "Dateityp .zip zuordnen",
+          "default_value": false
+        },
+        {
+          "key": "assoc_7z",
+          "label": "Dateityp .7z zuordnen",
+          "default_value": false
+        }
       ],
       "options_ini_template": "[Shell integration]\r\nContextMenu={shell_integration}\r\nCascadedMenu={cascaded_menu}\r\n\r\n[Associate]\r\nrar={assoc_rar}\r\nzip={assoc_zip}\r\n7z={assoc_7z}\r\n",
       "options_ini_filename": "WinRAR.ini",
@@ -130,7 +195,7 @@
       "sha256": null,
       "default_language": null,
       "languages": null,
-      "notes": "WICHTIG - vor Produktiveinsatz unbedingt gegen die offizielle WinRAR-Silent-Install-Doku (liegt dem Installer bei bzw. win-rar.com) pruefen: Der Mechanismus (WinRAR.ini mit demselben Namen wie der Installer ins selbe Verzeichnis legen + /S) ist korrekt dokumentiert, aber die hier eingetragenen Section-/Key-Namen ([Shell integration]/ContextMenu/CascadedMenu, [Associate]/rar/zip/7z) sind ein Platzhalter nach bestem Wissen, KEINE verifizierte Tatsache. installer_url ist bewusst null: WinRAR-Downloads sind versionsnummeriert im Dateinamen (z.B. winrar-x64-701.exe) ohne stabile 'latest'-URL, genau wie bei IrfanView - bei jedem Update manuell pflegen. path_arg_template ebenfalls bewusst null: ein Installationspfad-Schalter wird fuer WinRAR haeufig als /D=\"{path}\" kolportiert, das ist hier aber nicht mit ausreichender Sicherheit verifiziert, deshalb lieber null als ein moeglicherweise falscher Wert. license_type=key_file ist der von WinRAR selbst dokumentierte Mechanismus fuer Volumenlizenzen (rarreg.key im Installationsverzeichnis, wird von SilentInstaller.cs erst nach erfolgreicher Installation geschrieben)."
+      "notes": "WICHTIG - vor Produktiveinsatz gegen die offizielle WinRAR-Doku pruefen, Stand Websuche (silentinstallhq.com, ManageEngine, ntlite.com-Forum): /S fuer Silent ist mehrfach unabhaengig bestaetigt. rarreg.key neben den Installer legen fuer die Lizenz ist ebenfalls unabhaengig bestaetigt (ntlite-Forum-Beispiel deckt sich mit dem bisherigen Katalog-Eintrag). /D=\"{path}\" fuer einen Pfad-Override wird von mehreren Community-Quellen genannt, ABER ein ElevenForum-Thread fragt explizit, ob ein Pfad-Override ueberhaupt moeglich ist ('Winrar 5 install directory override?') - uneindeutig, deshalb bewusst weiter null statt eines widerspruechlich belegten Werts. Die WinRAR.ini-Section-/Key-Namen fuer Kontextmenue/Dateizuordnung ([Shell integration]/ContextMenu/CascadedMenu, [Associate]/rar/zip/7z) sind NICHT verifizierbar gefunden (auch die offizielle WinRAR.ini-Doku auf techshelps.github.io nennt sie nicht) - bleibt ein unverifizierter Platzhalter, vor Nutzung an einer echten Installation gegenpruefen (z.B. Optionen setzen, WinRAR.ini-Inhalt ansehen). installer_url bleibt bewusst null: versionsnummerierter Dateiname ohne stabile 'latest'-URL."
     },
     {
       "id": "7zip",
@@ -139,7 +204,9 @@
       "homepage": "https://www.7-zip.org/",
       "installer_url": null,
       "installer_type": "exe",
-      "silent_args": ["/S"],
+      "silent_args": [
+        "/S"
+      ],
       "default_install_path": "%ProgramFiles%\\7-Zip",
       "path_arg_template": null,
       "detect_display_name_contains": "7-Zip",
@@ -155,7 +222,9 @@
       "homepage": "https://notepad-plus-plus.org/",
       "installer_url": null,
       "installer_type": "exe",
-      "silent_args": ["/S"],
+      "silent_args": [
+        "/S"
+      ],
       "default_install_path": "%ProgramFiles%\\Notepad++",
       "path_arg_template": "/D={path}",
       "detect_display_name_contains": "Notepad++",
@@ -171,14 +240,19 @@
       "homepage": "https://www.libreoffice.org/",
       "installer_url": null,
       "installer_type": "msi",
-      "silent_args": ["/qn"],
+      "silent_args": [
+        "/qn",
+        "/norestart",
+        "ALLUSERS=1",
+        "ADDLOCAL=ALL"
+      ],
       "default_install_path": "%ProgramFiles%\\LibreOffice",
-      "path_arg_template": null,
+      "path_arg_template": "INSTALLDIR=\"{path}\"",
       "detect_display_name_contains": "LibreOffice",
       "sha256": null,
       "default_language": null,
       "languages": null,
-      "notes": "WICHTIG - echter Code-Gap, vor Produktiveinsatz pruefen: LibreOffice wird fuer Windows als reine .msi ausgeliefert, nicht als .exe. installer_type steht hier ehrlich auf 'msi', obwohl der Katalog laut Modell-Kommentar bisher durchgehend 'exe' nutzt - SilentInstaller.cs wertet installer_type aktuell gar nicht aus und startet die heruntergeladene Datei immer direkt per Process.Start(UseShellExecute=false); eine rohe .msi laesst sich darueber erfahrungsgemaess NICHT starten (dafuer braucht es msiexec.exe /i \"<datei>\" /qn als Wrapper). Vor Einsatz entweder den Installer-Code entsprechend erweitern oder diesen Eintrag nicht verwenden. installer_url ist bewusst null: download.documentfoundation.org nutzt versions- und plattformspezifische Pfade ohne stabile 'latest'-URL, und die Installer sind zusaetzlich sprachspezifisch - Mechanismus (Basisinstaller vs. separate Sprachpakete) hier nicht verifiziert, deshalb auch default_language/languages bewusst leer. path_arg_template ist bewusst null: der genaue MSI-Property-Name fuer einen Pfad-Override (z.B. INSTALLLOCATION) ist fuer LibreOffice hier nicht verifiziert."
+      "notes": "Code-Gap ist behoben: installer_type=msi wird von SilentInstaller.cs jetzt ueber msiexec.exe /i \"<datei>\" ... gestartet. silent_args (/qn /norestart ALLUSERS=1 ADDLOCAL=ALL) und INSTALLDIR fuer den Pfad-Override sind ueber mehrere unabhaengige Quellen uebereinstimmend bestaetigt (silentinstallhq.com, salivity.github.io 'LibreOffice MSI Properties for Silent Deployment', get-itsolutions.com). installer_url bleibt bewusst null: verifiziertes URL-MUSTER ist https://download.documentfoundation.org/libreoffice/stable/{VERSION}/win/x86_64/LibreOffice_{VERSION}_Win_x86-64.msi, aber keine stabile 'latest'-URL ohne Versionsnummer gefunden - {VERSION} bei jedem Update manuell durch die aktuelle Version ersetzen (z.B. 26.8.1, Stand der Recherche). Sprachpakete sind bei LibreOffice separate zusaetzliche MSIs - Mechanismus dafuer hier nicht recherchiert, daher default_language/languages weiterhin bewusst leer."
     },
     {
       "id": "thunderbird",
@@ -187,15 +261,23 @@
       "homepage": "https://www.thunderbird.net/",
       "installer_url": "https://download.mozilla.org/?product=thunderbird-latest&os=win64&lang=de",
       "installer_type": "exe",
-      "silent_args": ["-ms"],
+      "silent_args": [
+        "-ms"
+      ],
       "default_install_path": "%ProgramFiles%\\Mozilla Thunderbird",
       "path_arg_template": "/InstallDirectoryPath={path}",
       "detect_display_name_contains": "Thunderbird",
       "sha256": null,
       "default_language": "de",
       "languages": {
-        "de": { "installer_url": "https://download.mozilla.org/?product=thunderbird-latest&os=win64&lang=de", "extra_args": null },
-        "en-US": { "installer_url": "https://download.mozilla.org/?product=thunderbird-latest&os=win64&lang=en-US", "extra_args": null }
+        "de": {
+          "installer_url": "https://download.mozilla.org/?product=thunderbird-latest&os=win64&lang=de",
+          "extra_args": null
+        },
+        "en-US": {
+          "installer_url": "https://download.mozilla.org/?product=thunderbird-latest&os=win64&lang=en-US",
+          "extra_args": null
+        }
       },
       "notes": "Gleicher Hersteller und (soweit hier bekannt) dieselbe Installer-Technik wie Firefox im Katalog: Stub-Installer, laedt bei Ausfuehrung die zur lang=-URL passende Version nach. Silent-Switch (-ms), path_arg_template und languages-Struktur 1:1 nach dem Firefox-Eintrag uebernommen. Produktkennung hier 'thunderbird-latest' (ohne das '-ssl'-Suffix, das es bei Firefox gibt) - vor Produktiveinsatz einmal mit einer echten Downloadanfrage verifizieren, falls Mozilla die Kennung aendert oder ein '-ssl'-Pendant einfuehrt."
     },
@@ -204,16 +286,58 @@
       "name": "Zoom",
       "category": "Kommunikation",
       "homepage": "https://zoom.us/",
-      "installer_url": null,
+      "installer_url": "https://zoom.us/client/latest/ZoomInstallerFull.msi",
       "installer_type": "msi",
-      "silent_args": ["/qn"],
+      "silent_args": [
+        "/qn",
+        "/norestart",
+        "ALLUSERS=1"
+      ],
       "default_install_path": null,
       "path_arg_template": null,
       "detect_display_name_contains": "Zoom",
       "sha256": null,
       "default_language": null,
       "languages": null,
-      "notes": "WICHTIG - echter Code-Gap, vor Produktiveinsatz pruefen: Zoom fuer unbeaufsichtigte Deployments wird ueblicherweise als 'ZoomInstallerFull.msi' verteilt (nicht der kleine Web-Bootstrapper .exe, der fuer Silent-Installs laut Zooms eigener Deployment-Doku explizit ungeeignet ist). installer_type steht deshalb ehrlich auf 'msi', obwohl der Katalog laut Modell-Kommentar bisher durchgehend 'exe' nutzt - SilentInstaller.cs wertet installer_type aktuell nicht aus und startet die Datei immer direkt per Process.Start(UseShellExecute=false); eine rohe .msi laesst sich darueber erfahrungsgemaess NICHT starten (dafuer braucht es msiexec.exe /i \"<datei>\" /qn als Wrapper). installer_url ist bewusst null: die genaue, aktuell gueltige URL (kolportiert u.a. https://zoom.us/client/latest/ZoomInstallerFull.msi) ist hier nicht mit ausreichender Sicherheit verifiziert und Zoom hat Download-Pfade in der Vergangenheit geaendert. default_install_path ist bewusst null: der Zoom-Client installiert standardmaessig pro Benutzer unter %AppData%\\Zoom, nicht nach Program Files - ein maschinenweites Setup braucht zusaetzlich die MSI-Property ALLUSERS=1, die hier ueber silent_args nicht sauber modellierbar ist (muesste je Einsatzart umgeschaltet werden). path_arg_template bewusst null: kein verifizierter MSI-Property-Name fuer einen Pfad-Override bekannt. Sprachsteuerung per Installer-Switch ist nicht bekannt -> languages bewusst leer."
+      "notes": "Code-Gap ist behoben: installer_type=msi laeuft jetzt ueber msiexec.exe-Wrapper in SilentInstaller.cs. installer_url live getestet (12.10.2026, curl -I): https://zoom.us/client/latest/ZoomInstallerFull.msi liefert tatsaechlich einen 302-Redirect auf eine aktuelle, konkrete Build-URL (cdn.zoom.us/prod/<version>/ZoomInstallerFull.msi) - also eine echte, funktionierende 'latest'-URL, kein Platzhalter. ALLUSERS=1 fuer maschinenweite Installation ist dokumentiert bestaetigt (mehrere Quellen, u.a. silentinstallhq.com); ohne dieses Property installiert der MSI-Client sonst pro Benutzer unter %AppData%\\Zoom. default_install_path/path_arg_template bleiben bewusst null: kein verifizierter MSI-Property-Name fuer einen Pfad-Override bei Zoom gefunden. Sprachsteuerung per Installer-Switch nicht bekannt -> languages bewusst leer. Hinweis: Zoom aendert Download-Infrastruktur erfahrungsgemaess gelegentlich - falls die URL irgendwann nicht mehr funktioniert, mit einem frischen curl -I pruefen statt blind zu vertrauen."
+    },
+    {
+      "id": "office365",
+      "name": "Microsoft 365 Apps (Office)",
+      "category": "Office",
+      "homepage": "https://www.microsoft.com/microsoft-365",
+      "installer_url": "https://officecdn.microsoft.com/pr/wsus/setup.exe",
+      "installer_type": "exe",
+      "silent_args": [
+        "/configure",
+        "configuration.xml"
+      ],
+      "default_install_path": "%ProgramFiles%\\Microsoft Office",
+      "path_arg_template": null,
+      "license_type": null,
+      "options": [
+        {
+          "key": "arch",
+          "label": "Architektur",
+          "type": "choice",
+          "choice_values": [
+            "32",
+            "64"
+          ],
+          "choice_labels": [
+            "x86 (32-Bit)",
+            "x64 (64-Bit)"
+          ],
+          "default_choice": "32"
+        }
+      ],
+      "options_ini_filename": "configuration.xml",
+      "options_ini_template": "<Configuration>\r\n  <Add OfficeClientEdition=\"{arch}\" Channel=\"MonthlyEnterprise\">\r\n    <Product ID=\"O365ProPlusRetail\">\r\n      <Language ID=\"de-de\" />\r\n      <ExcludeApp ID=\"Groove\" />\r\n      <ExcludeApp ID=\"Lync\" />\r\n    </Product>\r\n  </Add>\r\n  <Updates Enabled=\"TRUE\" Channel=\"MonthlyEnterprise\" />\r\n  <Display Level=\"None\" AcceptEULA=\"TRUE\" />\r\n</Configuration>\r\n",
+      "detect_display_name_contains": "Microsoft 365",
+      "sha256": null,
+      "default_language": "de",
+      "languages": null,
+      "notes": "Laeuft ueber das Office Deployment Tool (ODT): setup.exe liest beim Start configuration.xml aus demselben Verzeichnis und zieht sich die eigentlichen Office-Binaries je nach Konfiguration selbst von Microsofts CDN (nicht die options_ini_template-Datei selbst ist die Installation, sie steuert nur, WAS setup.exe herunterlaedt). installer_url live getestet (12.10.2026, curl -I): officecdn.microsoft.com/pr/wsus/setup.exe liefert 200 OK mit echtem setup.exe (~7 MB) - 'wsus' ist die oeffentlich dokumentierte Standard-Branch-GUID, die in zahllosen Microsoft-/Community-Deployment-Anleitungen fuer exakt diesen Zweck verwendet wird. Architektur (x86/x64) ist ueber den neuen 'choice'-Options-Typ waehlbar (Vorgabe: x86, Nutzerwunsch), ersetzt {arch} direkt im OfficeClientEdition-Attribut. Produkt-ID O365ProPlusRetail = 'Microsoft 365 Apps for enterprise' (vormals 'ProPlus') - die ueblicherweise ueber Volumen-/CSP-Lizenzen bei Kunden eingesetzte Variante, NICHT 'Microsoft 365 Business Standard' (O365BusinessRetail); bei Bedarf Product-ID hier anpassen. Channel bewusst 'MonthlyEnterprise' (planbarere monatliche Updates statt taeglicher Current-Channel-Builds) - manuell im Template aenderbar. Groove (alter OneDrive-for-Business-Sync) und Lync (altes Skype for Business) sind als veraltete Komponenten fest ausgeschlossen; eine GUI-Checkbox pro Office-App (Access/Publisher/Teams etc.) ist mit dem aktuellen Options-Mechanismus NICHT sauber abbildbar, weil WriteOptionsIni nur Werte innerhalb einer Zeile ersetzt, nicht ganze XML-Zeilen bedingt ein-/ausblendet - das waere eine groessere Erweiterung (TODO), falls gewuenscht. license_type ist bewusst null: Aktivierung laeuft ueber Tenant-/Konto-Anmeldung, nicht ueber einen CLI-Key oder eine Lizenzdatei. default_install_path ist nur informativ, da Office C2R keinen Pfad-Override unterstuetzt -> path_arg_template bewusst null. detect_display_name_contains ist ein Best-Guess (Registry-DisplayName bei C2R-Installationen variiert je Sprache/Edition, z.B. 'Microsoft 365 Apps for enterprise - de-de') - vor Praxiseinsatz einmal an einer echten Installation gegenpruefen."
     }
   ]
 }

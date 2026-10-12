@@ -415,6 +415,9 @@ namespace BasicInstaller
                     if (saved.options != null)
                         foreach (var kv in saved.options)
                             row.Options[kv.Key] = kv.Value;
+                    if (saved.choice_options != null)
+                        foreach (var kv in saved.choice_options)
+                            row.ChoiceOptions[kv.Key] = kv.Value;
                     // Lizenzschluessel/-datei bewusst nicht aus der Config geladen -
                     // siehe ConfigStore.AppUserSettings; Volumenlizenzen koennen
                     // optional ueber den Windows Credential Manager vorbelegt werden
@@ -450,6 +453,7 @@ namespace BasicInstaller
                     install_path = row.PathEditable ? row.InstallPath : null,
                     language = row.LanguageSelectable ? row.SelectedLanguage : null,
                     options = row.Options.Count > 0 ? new Dictionary<string, bool>(row.Options) : null,
+                    choice_options = row.ChoiceOptions.Count > 0 ? new Dictionary<string, string>(row.ChoiceOptions) : null,
                 };
             }
             return cfg;
@@ -475,6 +479,9 @@ namespace BasicInstaller
                     if (saved.options != null)
                         foreach (var kv in saved.options)
                             row.Options[kv.Key] = kv.Value;
+                    if (saved.choice_options != null)
+                        foreach (var kv in saved.choice_options)
+                            row.ChoiceOptions[kv.Key] = kv.Value;
                 }
                 else
                 {
@@ -778,7 +785,7 @@ namespace BasicInstaller
 
             AppendLog("Installiere (silent) ...");
             var result = await Task.Run(() =>
-                SilentInstaller.Run(app, installerPath, row.InstallPath, row.SelectedLanguage, row.LicenseKey, row.Options));
+                SilentInstaller.Run(app, installerPath, row.InstallPath, row.SelectedLanguage, row.LicenseKey, row.BuildOptionSubstitutions()));
 
             if (result.Outcome == InstallOutcome.Success)
             {

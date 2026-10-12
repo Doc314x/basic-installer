@@ -35,11 +35,18 @@ namespace BasicInstaller.Models
         public bool HasOptions => Source.options != null && Source.options.Length > 0;
 
         /// <summary>
-        /// Checkbox-Zustand je Options-"key" (siehe AppEntry.AppOption). Wird in
-        /// OptionsDialog bearbeitet und in config.json persistiert - im
+        /// Checkbox-Zustand je bool-Options-"key" (siehe AppEntry.AppOption).
+        /// Wird in OptionsDialog bearbeitet und in config.json persistiert - im
         /// Gegensatz zu LicenseKey, das bewusst NIE in config.json landet.
         /// </summary>
         public Dictionary<string, bool> Options { get; } = new Dictionary<string, bool>();
+
+        /// <summary>
+        /// Gewaehlter Wert je "choice"-Options-"key" (z.B. Architektur x86/x64
+        /// bei Office 365). Getrennt von Options, weil der Wert hier ein
+        /// beliebiger String ist, keine Checkbox.
+        /// </summary>
+        public Dictionary<string, string> ChoiceOptions { get; } = new Dictionary<string, string>();
 
         public string[] AvailableLanguages => LanguageResolution.AvailableLanguages(Source);
 
@@ -54,8 +61,31 @@ namespace BasicInstaller.Models
             InstalledVersion = InstalledAppDetector.FindInstalledVersion(source.detect_display_name_contains) ?? "–";
 
             if (source.options != null)
+            {
                 foreach (var option in source.options)
-                    Options[option.key] = option.default_value;
+                {
+                    if (option.type == "choice")
+                        ChoiceOptions[option.key] = option.default_choice;
+                    else
+                        Options[option.key] = option.default_value;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Fuehrt Options und ChoiceOptions zu einer einzigen String-Ersetzung
+        /// zusammen (bool -> "1"/"0", choice -> gewaehlter Wert woertlich) -
+        /// genau das Format, das SilentInstaller.WriteOptionsIni fuer die
+        /// {key}-Platzhalter in options_ini_template braucht.
+        /// </summary>
+        public Dictionary<string, string> BuildOptionSubstitutions()
+        {
+            var result = new Dictionary<string, string>();
+            foreach (var kv in Options)
+                result[kv.Key] = kv.Value ? "1" : "0";
+            foreach (var kv in ChoiceOptions)
+                result[kv.Key] = kv.Value;
+            return result;
         }
 
         /// <summary>

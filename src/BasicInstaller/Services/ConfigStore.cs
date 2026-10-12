@@ -11,6 +11,7 @@ namespace BasicInstaller.Services
         public string install_path { get; set; }
         public string language { get; set; }
         public Dictionary<string, bool> options { get; set; }
+        public Dictionary<string, string> choice_options { get; set; }
 
         // Bewusst KEIN Feld fuer Lizenzschluessel/-dateien (z.B. ESET, WinRAR):
         // Secrets landen nicht in einer Klartext-JSON-Datei unter %APPDATA% -
