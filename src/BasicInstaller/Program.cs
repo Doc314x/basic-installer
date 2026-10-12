@@ -16,7 +16,10 @@ namespace BasicInstaller
             // mit einer klaren Fehlermeldung im Log.
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
-            Application.SetHighDpiMode(HighDpiMode.SystemAware);
+            // DPI-Awareness laeuft fuer .NET Framework 4.8 ausschliesslich ueber
+            // app.manifest (dpiAware/dpiAwareness) - Application.SetHighDpiMode()
+            // existiert erst ab .NET Core 3 WinForms und wuerde hier nicht mal
+            // compilieren (CS0103/CS0117), nicht nur zur Laufzeit nichts tun.
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new MainForm());

@@ -22,13 +22,19 @@ namespace BasicInstaller
             MaximizeBox = false;
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterParent;
-            ClientSize = new Size(360, 260);
             Font = new Font("Segoe UI", 9f);
+            // AutoSize statt fester ClientSize: eine feste Pixelgroesse war
+            // hier schon einmal zu knapp fuer die lange E-Mail-Platzhalter-
+            // Zeile (ohne Windows-GUI zum Testen nicht zuverlaessig vorhersagbar
+            // - gleiches Prinzip wie bei OptionsDialog/MainForm).
+            AutoSize = true;
+            AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
             var layout = new TableLayoutPanel
             {
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
                 ColumnCount = 1,
+                AutoSize = true,
                 Padding = new Padding(16),
             };
 
@@ -42,8 +48,7 @@ namespace BasicInstaller
             AddLine(layout, "44787 Bochum");
             AddLine(layout, "");
             AddLine(layout, "Telefon: +49 (0) 234 43 818 42");
-            AddLine(layout, "E-Mail: (bitte eintragen - auf der Webseite" +
-                             " per JavaScript verschleiert, siehe Quellcode-Kommentar)");
+            AddLine(layout, "E-Mail: (bitte eintragen – Webseite verschleiert sie per JavaScript)", maxWidth: 328);
 
             var website = new LinkLabel { Text = "https://as-ct.de", AutoSize = true, Margin = new Padding(0, 4, 0, 0) };
             website.LinkClicked += (s, e) =>
@@ -63,15 +68,18 @@ namespace BasicInstaller
             AcceptButton = btnClose;
         }
 
-        private static void AddLine(TableLayoutPanel layout, string text, bool bold = false, float size = 9f)
+        private static void AddLine(TableLayoutPanel layout, string text, bool bold = false, float size = 9f, int maxWidth = 0)
         {
-            layout.Controls.Add(new Label
+            var label = new Label
             {
                 Text = text,
                 AutoSize = true,
                 Font = new Font("Segoe UI", size, bold ? FontStyle.Bold : FontStyle.Regular),
                 Margin = new Padding(0, 1, 0, 1),
-            });
+            };
+            if (maxWidth > 0)
+                label.MaximumSize = new Size(maxWidth, 0); // 0 = Hoehe frei, nur Breite begrenzen -> Text bricht um
+            layout.Controls.Add(label);
         }
     }
 }
