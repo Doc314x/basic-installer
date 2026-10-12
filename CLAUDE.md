@@ -165,6 +165,21 @@ Download cache: `%LOCALAPPDATA%\BasicInstaller\cache\` (`Downloader.CacheDirecto
 
 Secrets: Windows Credential Manager, target name `BasicInstaller_license_<app id>` — never a file.
 
+## Code signing
+
+`.github/workflows/release.yml` has two `azure/artifact-signing-action@v1` steps (exe before
+zipping/Inno Setup, `Setup.exe` after Inno Setup builds it), both gated on
+`if: ${{ secrets.AZURE_TENANT_ID != '' }}` so the pipeline keeps working unsigned until those secrets
+exist — don't remove the gate "to simplify," that's what keeps an unconfigured fork/clone building. Full
+setup steps (Azure side + which six GitHub secrets) are in README.md "Code-Signing"; don't duplicate
+them here, keep this pointer short. One thing worth knowing even without touching Azure: this project
+deliberately did **not** reach for a classic exportable `.pfx` — as of June 2023 the CA/Browser Forum
+requires hardware-token/HSM-backed private keys for *all* newly issued code-signing certs (OV included,
+not just EV), so a droppable `.pfx` + password GitHub secret isn't realistically obtainable from a
+reputable CA anymore. Azure Artifact Signing (no physical token, ~$10/month, scriptable from CI) was
+picked specifically because it fits that constraint, not as a workaround for a cheaper option that
+would otherwise be preferred.
+
 ## Branding
 
 Icon (`assets/app.ico`, multi-resolution) and the "ℹ Über / Kontakt" popup's contact details were pulled

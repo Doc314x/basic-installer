@@ -32,6 +32,24 @@ jobs:
       - name: Release-Build
         run: dotnet build src/BasicInstaller/BasicInstaller.csproj -c Release
 
+      # Code-Signing ist komplett optional und bricht ohne eingerichtete
+      # Secrets nichts - siehe README/CLAUDE.md "Code-Signing" fuer die
+      # Einrichtung (Azure Artifact Signing, vormals "Trusted Signing").
+      # Muss VOR dem Zippen/Inno-Setup-Bau passieren, damit sowohl die ZIP
+      # als auch der Installer die signierte exe enthalten.
+      - name: exe signieren (optional - nur wenn Azure-Secrets gesetzt sind)
+        if: ${{ secrets.AZURE_TENANT_ID != '' }}
+        uses: azure/artifact-signing-action@v1
+        with:
+          endpoint: ${{ secrets.AZURE_ENDPOINT }}
+          signing-account-name: ${{ secrets.AZURE_CODE_SIGNING_NAME }}
+          certificate-profile-name: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          files-folder: src/BasicInstaller/bin/Release/net48
+          files-folder-filter: exe
+
       - name: Build-Ausgabe zippen
         shell: pwsh
         run: |
@@ -62,6 +80,19 @@ jobs:
           } else {
             Write-Warning "Inno Setup (ISCC.exe) wurde auf diesem Runner nicht unter '$iscc' gefunden - Installer-Schritt wird uebersprungen."
           }
+
+      - name: Setup.exe signieren (optional - nur wenn Azure-Secrets gesetzt sind)
+        if: ${{ secrets.AZURE_TENANT_ID != '' && env.SETUP_PATH != '' }}
+        uses: azure/artifact-signing-action@v1
+        with:
+          endpoint: ${{ secrets.AZURE_ENDPOINT }}
+          signing-account-name: ${{ secrets.AZURE_CODE_SIGNING_NAME }}
+          certificate-profile-name: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          files-folder: installer/Output
+          files-folder-filter: exe
 
       - name: GitHub Release erstellen und Dateien anhaengen
         if: startsWith(github.ref, 'refs/tags/v')

@@ -69,6 +69,46 @@ solange sie läuft).
 Repos `404`. Es wird bewusst kein Zugriffstoken im Client eingebettet; ein privates Repo heißt also
 schlicht: kein Auto-Update, keine halbe Lösung mit eingebettetem Secret.
 
+## Code-Signing
+
+Unsigniert zeigt Windows SmartScreen bei anderen Nutzern „Unbekannter Herausgeber". Der Workflow hat
+dafür bereits einen **optionalen** Signing-Schritt (sowohl für die exe als auch für `Setup.exe`) über
+**Azure Artifact Signing** (früher „Azure Trusted Signing") – ohne eingerichtete Secrets überspringt er
+sich einfach, nichts bricht.
+
+**Wichtig, falls du nach einem klassischen .pfx-Zertifikat suchst:** Seit Juni 2023 verlangt das
+CA/Browser Forum für *jedes* neu ausgestellte Code-Signing-Zertifikat (auch die günstigeren
+OV-Zertifikate, nicht nur EV) einen Hardware-Token oder eine Cloud-HSM – ein exportierbares .pfx mit
+Passwort gibt es bei seriösen CAs faktisch nicht mehr. Deshalb ist Azure Artifact Signing (kein
+physischer Token nötig, direkt aus GitHub Actions ansprechbar, ca. 10 $/Monat für 5.000 Signaturen,
+verfügbar in DE/EU) hier die praktikabelste Variante für eine kleine Firma – nicht nur eine Ausweich-
+lösung.
+
+**Einrichtung bei Microsoft (einmalig):**
+1. Azure-Account + Pay-as-you-go-Subscription.
+2. „Artifact Signing Account" anlegen (Region wählen, z. B. `weu` für Westeuropa).
+3. Identität verifizieren lassen: „Public"-Identität mit Steuernummer/Handelsregister einreichen,
+   Dokumenten-Check durch Microsofts Validierungsdienst (au10tix) durchlaufen – das dauert.
+4. „Certificate Profile" vom Typ **Public Trust** im Account anlegen.
+5. App-Registrierung in Azure AD anlegen (liefert Client-ID + Tenant-ID), Client-Secret generieren.
+6. Im Access Control (IAM) des Artifact Signing Accounts: der eigenen Nutzer-Identität die Rolle
+   **„Artifact Signing Identity Verifier"** zuweisen, der App-Registrierung die Rolle
+   **„Artifact Signing Certificate Profile Signer"**.
+
+**Danach im GitHub-Repo** (Settings → Secrets and variables → Actions) sechs Secrets anlegen:
+
+| Secret | Wert |
+|---|---|
+| `AZURE_TENANT_ID` | Tenant-ID der App-Registrierung |
+| `AZURE_CLIENT_ID` | Client-ID der App-Registrierung |
+| `AZURE_CLIENT_SECRET` | generiertes Client-Secret |
+| `AZURE_ENDPOINT` | Regions-Endpunkt, z. B. `https://weu.codesigning.azure.net/` |
+| `AZURE_CODE_SIGNING_NAME` | Name des Artifact Signing Accounts |
+| `AZURE_CERT_PROFILE_NAME` | Name des Certificate Profile |
+
+Sobald diese sechs Secrets existieren, signiert der nächste Release-Lauf automatisch – kein weiterer
+Code-/Workflow-Eingriff nötig.
+
 ## Katalog erweitern
 
 `catalog/apps.json` ist eine Liste von Objekten mit diesen Feldern:
