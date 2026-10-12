@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
@@ -34,8 +35,23 @@ namespace BasicInstaller.Services
         private static readonly Uri LatestReleaseUri =
             new Uri($"https://api.github.com/repos/{Owner}/{Repo}/releases/latest");
 
+        /// <summary>
+        /// Grund des letzten Fehlschlags von CheckForUpdateAsync (null bei Erfolg).
+        /// Vorher gab CheckForUpdateAsync bei JEDEM Fehler (kein Netz, GitHub-
+        /// Rate-Limit nach 60 unauthentifizierten Anfragen/Stunde, kaputtes JSON,
+        /// fehlendes .zip-Asset, ...) nur "null" zurueck - die GUI zeigte dann
+        /// immer denselben pauschalen "kein Netz oder GitHub nicht erreichbar"-
+        /// Text, egal was wirklich los war. Das macht ein reales Problem (z.B.
+        /// Rate-Limit durch wiederholtes Testen) von hier aus unmoeglich zu
+        /// unterscheiden - jetzt wird der tatsaechliche Grund hier abgelegt und
+        /// in MainForms Fehlermeldung angezeigt.
+        /// </summary>
+        public static string LastCheckError { get; private set; }
+
         public static async Task<ReleaseInfo> CheckForUpdateAsync()
         {
+            LastCheckError = null;
+
             using (var client = new HttpClient())
             {
                 // GitHub lehnt Anfragen ohne User-Agent-Header grundsaetzlich mit
@@ -50,27 +66,57 @@ namespace BasicInstaller.Services
                 {
                     response = await client.GetAsync(LatestReleaseUri).ConfigureAwait(false);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    return null; // kein Netz / GitHub nicht erreichbar -> stiller Abbruch, kein Absturz beim Start
+                    LastCheckError = "Netzwerkfehler: " + ex.Message;
+                    return null;
                 }
 
                 if (!response.IsSuccessStatusCode)
+                {
+                    // 403 mit "X-RateLimit-Remaining: 0" ist der haeufigste Fall bei
+                    // wiederholtem manuellem Testen: 60 unauthentifizierte Anfragen/
+                    // Stunde pro IP, schnell aufgebraucht, wenn mehrere Techniker
+                    // dieselbe Firmen-IP teilen.
+                    var remaining = response.Headers.TryGetValues("X-RateLimit-Remaining", out var vals)
+                        ? vals.FirstOrDefault()
+                        : null;
+                    LastCheckError = remaining == "0"
+                        ? "GitHub-Rate-Limit erreicht (60 Anfragen/Stunde ohne Login) - spaeter erneut versuchen."
+                        : $"GitHub antwortete mit HTTP {(int)response.StatusCode} {response.StatusCode}.";
                     return null;
+                }
 
                 var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 var serializer = new JavaScriptSerializer();
 
-                // Bewusst DeserializeObject statt Deserialize<Dictionary<string,object>>:
-                // JavaScriptSerializer liefert bei untypisierten Zielen verschachtelte
-                // JSON-Arrays als ArrayList (nicht object[]) - das muss beim Lesen
-                // beruecksichtigt werden, sonst liefert ein Cast immer null.
-                if (!(serializer.DeserializeObject(json) is Dictionary<string, object> data))
+                Dictionary<string, object> data;
+                try
+                {
+                    // Bewusst DeserializeObject statt Deserialize<Dictionary<string,object>>:
+                    // JavaScriptSerializer liefert bei untypisierten Zielen verschachtelte
+                    // JSON-Arrays als ArrayList (nicht object[]) - das muss beim Lesen
+                    // beruecksichtigt werden, sonst liefert ein Cast immer null.
+                    data = serializer.DeserializeObject(json) as Dictionary<string, object>;
+                }
+                catch (Exception ex)
+                {
+                    LastCheckError = "Antwort von GitHub konnte nicht gelesen werden: " + ex.Message;
                     return null;
+                }
+
+                if (data == null)
+                {
+                    LastCheckError = "Antwort von GitHub hatte ein unerwartetes Format.";
+                    return null;
+                }
 
                 var tagName = data.TryGetValue("tag_name", out var tagObj) ? tagObj as string : null;
                 if (string.IsNullOrWhiteSpace(tagName))
+                {
+                    LastCheckError = "Release-Antwort enthielt kein tag_name (gibt es ueberhaupt schon ein Release?).";
                     return null;
+                }
 
                 string downloadUrl = null;
                 if (data.TryGetValue("assets", out var assetsObj) && assetsObj is ArrayList assets)
@@ -88,7 +134,10 @@ namespace BasicInstaller.Services
                 }
 
                 if (downloadUrl == null)
+                {
+                    LastCheckError = $"Release {tagName} hat kein .zip-Asset zum Herunterladen.";
                     return null;
+                }
 
                 return new ReleaseInfo
                 {

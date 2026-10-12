@@ -152,6 +152,65 @@ fix (always use a timeout, kill and report rather than hang).
 where the manifest is later removed/bypassed — fail loud (visible warning) instead of silently failing
 installs into a directory the process can't write to.
 
+## Real bugs found on first live Windows test (don't reintroduce these)
+
+Everything up to this point had only been reviewed by reading the code — this project was built in a
+Linux sandbox with no Windows GUI to run it on. The first real test on actual Windows surfaced several
+concrete bugs, all now fixed:
+
+- **Six of the thirteen catalog entries (`brave`, `firefox`, `vlc`, `irfanview`, `acrobat_reader`,
+  `eset_nod32`) had no `detect_display_name_contains` at all** — they were written before the
+  installed-version-detection feature existed, and nobody went back to add it. `InstalledAppDetector.
+  FindInstalledVersion(null)` returns `null` immediately, so these always showed "nicht installiert"
+  regardless of reality. This was most of what "viele installierte Programme werden gar nicht erkannt"
+  turned out to be. **When adding a new catalog entry, `detect_display_name_contains` is not optional
+  polish — forgetting it silently breaks detection for that app with no error anywhere.**
+- **The per-row language `DataGridViewComboBoxColumn` didn't work in practice** (dropdown appeared but
+  selecting a value didn't stick) — binding a combo column via `DataPropertyName` while also manually
+  populating each cell's `Items` in `DataBindingComplete` is a known-fragile WinForms combination. Fixed
+  by removing the per-row language column entirely — language is now a single global `ComboBox`
+  (`_cmbGlobalLanguage`, "Deutsch"/"Englisch") that calls `ApplyGlobalLanguage()` to push the best-
+  matching language onto every `LanguageSelectable` row's `AppRow.SelectedLanguage`. This was also an
+  explicit user request independent of the bug ("Sprache würde ich global einstellen, nicht pro App") —
+  don't resurrect a per-row language combo column even to "fix" the binding properly; the global control
+  is the wanted design now, not a workaround.
+- **`AutoUpdateService.CheckForUpdateAsync` returned bare `null` on every possible failure** (no
+  network, GitHub rate limit at 60 unauthenticated requests/hour, malformed JSON, missing `.zip` asset —
+  all indistinguishable). In practice this showed as "GitHub nicht erreichbar" even when the real cause
+  was rate-limiting from repeated manual testing. Fixed via `AutoUpdateService.LastCheckError` (set at
+  every failure branch with the specific reason, including detecting `X-RateLimit-Remaining: 0`), which
+  `MainForm` now includes in the message box. If you touch this method again, keep setting
+  `LastCheckError` at every early-return — a bare `null` here is exactly the kind of unhelpful catch-all
+  this project's "fail loud, be specific" principle (see `IMAP_TIMEOUT`/append-status comments) argues
+  against.
+- **The self-update button's label ("Nach App-Updates suchen") was read as "check for updates to the
+  catalog apps," not "check for a new Basic Installer version."** Renamed to "Basic Installer selbst
+  aktualisieren" — keep the wording unambiguous if you touch it again; this project has two completely
+  different "update" concepts (self-update via GitHub Releases vs. re-running a catalog app's installer)
+  and they look confusingly similar in a short button label.
+- **The `LicenseKey` grid column and the gear ("⚙") button's visibility were a UX mismatch the user
+  rejected on sight**: a dedicated grid column for license key/file, with the *full* editing experience
+  (including the file-load button and the "remember in vault" checkbox) actually living in
+  `OptionsDialog`. Removed the grid column entirely — license key/file is now **only** reachable through
+  the ⚙ popup, consistent with how installation options already worked. This also exposed a real,
+  separate bug: the ⚙ button's visibility was gated on `row.HasOptions` alone, so a license-only app like
+  ESET (which has no `options` array, only `license_type`) never showed a ⚙ at all and its license was
+  unreachable. The gate is now `row.HasOptions || row.LicenseKeyEditable` everywhere it's checked
+  (`Grid_DataBindingComplete`'s hide-the-button block, and `Grid_CellClick`'s guard) — if you add a third
+  per-app "needs its own popup" mechanism later, remember both places check this combined condition, not
+  just `HasOptions`.
+- **"Standard" profile auto-load** was a feature request that arrived alongside the bug reports, not a
+  bug itself: if a profile named `"Standard"` (case-insensitive) exists in `profiles.json`, it's applied
+  automatically at startup, *after* the normal `config.json` restore and before the window is shown — see
+  the end of `LoadCatalogAndConfig`. A profile's own `global_language` (if set) wins over whatever
+  `config.json` had.
+
+**Takeaway for future sessions:** this project's build pipeline (GitHub Actions) only proves the code
+*compiles* — it has never proven the GUI actually works, because nobody here can render a WinForms
+window. Treat any claim about dropdown/data-binding/layout behavior as unverified until a human
+confirms it on real Windows, and prefer the simplest, most well-established WinForms pattern over a
+clever one when you can't test it yourself.
+
 ## Configuration / Data Files
 
 All under `%APPDATA%\BasicInstaller\`:

@@ -16,9 +16,12 @@ eigenes, schlankes Tool mit frei editierbarem Katalog statt eines gepflegten Fre
   übersprungen (Häkchen „Bereits installierte Programme überspringen" abwählen, um trotzdem zu
   aktualisieren/neu zu installieren – die Hersteller-Silent-Installer sind dafür ausgelegt, über eine
   bestehende Installation zu laufen).
-- **Profile** – die aktuelle Auswahl (welche Apps, welcher Pfad, welche Sprache, welche Optionen) lässt
+- **Profile** – die aktuelle Auswahl (welche Apps, welcher Pfad, welche Optionen, welche Sprache) lässt
   sich unter einem Namen speichern und später mit einem Klick wieder laden (z. B. „Kundenstandard" vs.
-  „Technikerstandard"). Liegt unter `%APPDATA%\BasicInstaller\profiles.json`.
+  „Technikerstandard"). Liegt unter `%APPDATA%\BasicInstaller\profiles.json`. Ein Profil namens
+  **„Standard"** (Groß-/Kleinschreibung egal) lädt sich beim Programmstart automatisch.
+- **Sprache ist global**, nicht pro Programm – eine Auswahl (Deutsch/Englisch) oben im Fenster gilt für
+  alle Apps, die im Katalog überhaupt eine Sprachvariante anbieten.
 - **Nur herunterladen** – lädt die gewählten Installer in den lokalen Cache, ohne zu installieren. Für
   Technikereinsätze mit unsicherem Internet beim Kunden: vorher auf schnellem Netz vorladen, Installation
   läuft dann auch offline.
@@ -143,9 +146,11 @@ Code und Katalog-Metadaten, niemals Zugangsdaten.
 
 ## UX-Prinzip
 
-Die Haupttabelle zeigt nur, was zur Auswahl nötig ist (Checkbox, erkannte Version, Sprache, Pfad,
-Lizenzfeld). Alles Zusätzliche – Installationsoptionen, Kontaktdaten/Impressum – sitzt hinter kleinen
-Buttons/Popups (⚙-Spalte, „ℹ Über / Kontakt"-Link), damit das Hauptfenster aufgeräumt bleibt.
+Die Haupttabelle zeigt nur, was zur Auswahl nötig ist (Checkbox, erkannte Version, Pfad). Alles
+Zusätzliche – Installationsoptionen, Lizenzschlüssel/-datei, Kontaktdaten/Impressum – sitzt hinter
+kleinen Buttons/Popups (⚙-Spalte öffnet die Optionen/Lizenz eines einzelnen Programms, „ℹ Über /
+Kontakt"-Link), damit das Hauptfenster aufgeräumt bleibt. Sprache ist bewusst ein globaler Dropdown
+oben im Fenster statt einer Spalte pro Zeile.
 
 ## Lizenz
 

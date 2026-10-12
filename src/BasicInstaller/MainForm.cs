@@ -14,11 +14,14 @@ namespace BasicInstaller
 {
     /// <summary>
     /// Hauptfenster: Tabelle der Katalog-Apps (Checkbox, installierte Version,
-    /// Sprache, Pfad, Lizenz/Optionen) + Installieren-Button + Protokoll.
-    /// Bewusst eine einzige, flache Ansicht statt mehrerer Dialoge/Tabs - alles
-    /// Relevante ist auf den ersten Blick sichtbar. Kontaktdaten und
-    /// App-Update laufen ueber kleine Buttons/Popups, damit das Hauptfenster
-    /// clean bleibt (siehe README "UX").
+    /// Pfad, ⚙-Optionen/Lizenz-Popup) + Installieren-Button + Protokoll.
+    /// Sprache ist global (eine Auswahl fuer alle Apps, siehe
+    /// _cmbGlobalLanguage/ApplyGlobalLanguage), Lizenz/Installationsoptionen
+    /// leben bewusst NICHT als eigene Spalten, sondern nur im ⚙-Popup
+    /// (OptionsDialog) - beides auf expliziten Nutzerwunsch nach einem ersten
+    /// Praxistest so vereinfacht. Kontaktdaten und App-Update laufen ueber
+    /// kleine Buttons/Popups, damit das Hauptfenster clean bleibt (siehe
+    /// README "UX").
     /// </summary>
     public class MainForm : Form
     {
@@ -29,9 +32,7 @@ namespace BasicInstaller
         private DataGridViewTextBoxColumn _colName;
         private DataGridViewTextBoxColumn _colCategory;
         private DataGridViewTextBoxColumn _colInstalled;
-        private DataGridViewComboBoxColumn _colLanguage;
         private DataGridViewTextBoxColumn _colPath;
-        private DataGridViewTextBoxColumn _colLicense;
         private DataGridViewButtonColumn _colOptions;
 
         private Button _btnSelectAll;
@@ -42,6 +43,7 @@ namespace BasicInstaller
         private ComboBox _cmbProfiles;
         private Button _btnSaveProfile;
         private Button _btnDeleteProfile;
+        private ComboBox _cmbGlobalLanguage;
         private CheckBox _chkSkipInstalled;
         private Button _btnInstall;
         private ProgressBar _progressBar;
@@ -118,7 +120,10 @@ namespace BasicInstaller
             _btnSelectNone = new Button { Text = "Keine auswählen", AutoSize = true };
             _btnRefreshStatus = new Button { Text = "🔄 Status aktualisieren", AutoSize = true, Margin = new Padding(16, 0, 0, 0) };
             _btnPreload = new Button { Text = "⬇ Nur herunterladen (Cache)", AutoSize = true, Margin = new Padding(8, 0, 0, 0) };
-            _btnCheckUpdate = new Button { Text = "🔄 Nach App-Updates suchen", AutoSize = true, Margin = new Padding(24, 0, 0, 0) };
+            // Bewusst klar von den Katalog-Apps abgegrenzt benannt - "App-Updates"
+            // war mehrfach missverstanden worden als "Updates der installierten
+            // Programme" statt "Update von Basic Installer selbst".
+            _btnCheckUpdate = new Button { Text = "🔄 Basic Installer selbst aktualisieren", AutoSize = true, Margin = new Padding(24, 0, 0, 0) };
             _btnSelectAll.Click += (s, e) => SetAllSelected(true);
             _btnSelectNone.Click += (s, e) => SetAllSelected(false);
             _btnRefreshStatus.Click += (s, e) => RefreshAllInstalledVersions();
@@ -148,6 +153,19 @@ namespace BasicInstaller
             profileBar.Controls.Add(_btnSaveProfile);
             profileBar.Controls.Add(_btnDeleteProfile);
             RefreshProfileList(selectName: null);
+
+            // Sprache GLOBAL statt pro Zeile (Nutzerwunsch) - eine einzige
+            // Auswahl fuer alle Apps, die ueberhaupt eine Sprachvariante im
+            // Katalog hinterlegt haben (siehe ApplyGlobalLanguage).
+            profileBar.Controls.Add(new Label { Text = "Sprache:", AutoSize = true, Margin = new Padding(24, 6, 4, 0) });
+            _cmbGlobalLanguage = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 110 };
+            _cmbGlobalLanguage.Items.AddRange(new object[] { "Deutsch", "Englisch" });
+            _cmbGlobalLanguage.SelectedIndexChanged += (s, e) =>
+            {
+                if (_rows == null) return; // Items werden vor LoadCatalogAndConfig befuellt
+                ApplyGlobalLanguage((string)_cmbGlobalLanguage.SelectedItem);
+            };
+            profileBar.Controls.Add(_cmbGlobalLanguage);
 
             BuildGrid();
 
@@ -327,15 +345,6 @@ namespace BasicInstaller
                 FillWeight = 75,
                 ToolTipText = "Aus der Windows-Uninstall-Registry erkannte Version, '–' = nicht gefunden.",
             };
-            _colLanguage = new DataGridViewComboBoxColumn
-            {
-                DataPropertyName = "SelectedLanguage",
-                HeaderText = "Sprache",
-                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-                FillWeight = 70,
-                FlatStyle = FlatStyle.Flat,
-                ToolTipText = "Nur wählbar, wenn das Programm im Katalog Sprachvarianten hinterlegt hat.",
-            };
             _colPath = new DataGridViewTextBoxColumn
             {
                 DataPropertyName = "InstallPath",
@@ -344,14 +353,6 @@ namespace BasicInstaller
                 FillWeight = 170,
                 ToolTipText = "Nur änderbar, wenn der Installer einen Pfad-Switch unterstützt (siehe Katalog).",
             };
-            _colLicense = new DataGridViewTextBoxColumn
-            {
-                DataPropertyName = "LicenseKey",
-                HeaderText = "Lizenzschlüssel",
-                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-                FillWeight = 120,
-                ToolTipText = "Optional - leer lassen, um ohne Aktivierung zu installieren und später zu aktivieren. Wird nie gespeichert.",
-            };
             _colOptions = new DataGridViewButtonColumn
             {
                 HeaderText = "",
@@ -359,10 +360,14 @@ namespace BasicInstaller
                 UseColumnTextForButtonValue = true,
                 AutoSizeMode = DataGridViewAutoSizeColumnMode.ColumnHeader,
                 Width = 36,
-                ToolTipText = "Installationsoptionen (z.B. Kontextmenü-Integration, Dateizuordnungen) - nur sichtbar wenn verfügbar.",
+                ToolTipText = "Optionen/Lizenz - nur sichtbar wenn fürs Programm verfügbar.",
             };
 
-            _grid.Columns.AddRange(_colSelected, _colName, _colCategory, _colInstalled, _colLanguage, _colPath, _colLicense, _colOptions);
+            // Sprache (global statt pro Zeile, siehe _cmbGlobalLanguage im Toolbar)
+            // und Lizenzschlüssel (nur noch im ⚙-Popup, nicht mehr als eigene
+            // Spalte - beides auf Nutzerwunsch entfernt) sind bewusst KEINE
+            // Grid-Spalten mehr.
+            _grid.Columns.AddRange(_colSelected, _colName, _colCategory, _colInstalled, _colPath, _colOptions);
             _grid.DataBindingComplete += Grid_DataBindingComplete;
             _grid.CurrentCellDirtyStateChanged += (s, e) =>
             {
@@ -410,8 +415,6 @@ namespace BasicInstaller
                     row.Selected = saved.selected;
                     if (!string.IsNullOrWhiteSpace(saved.install_path))
                         row.InstallPath = saved.install_path;
-                    if (!string.IsNullOrWhiteSpace(saved.language))
-                        row.SelectedLanguage = saved.language;
                     if (saved.options != null)
                         foreach (var kv in saved.options)
                             row.Options[kv.Key] = kv.Value;
@@ -430,28 +433,49 @@ namespace BasicInstaller
             }
 
             _grid.DataSource = _rows;
+
+            // Sprache ist jetzt global (siehe ConfigStore.UserConfig.global_language) -
+            // ComboBox-Auswahl setzt ApplyGlobalLanguage ueber ihr eigenes
+            // SelectedIndexChanged bereits in Gang.
+            var globalLanguage = string.IsNullOrWhiteSpace(savedConfig.global_language) ? "Deutsch" : savedConfig.global_language;
+            _cmbGlobalLanguage.SelectedItem = globalLanguage;
+            if (_cmbGlobalLanguage.SelectedItem == null) // falls ein alter/unbekannter Wert in config.json stand
+                _cmbGlobalLanguage.SelectedIndex = 0;
+
+            // "Standard"-Profil (falls vorhanden) laedt sich automatisch und
+            // VOR dem zuletzt gespeicherten Zustand - Nutzerwunsch: "da erstellt
+            // man Standard und das wird dann immer als erstes automatisch
+            // geladen". Namensvergleich bewusst case-insensitive.
+            var standardProfile = ProfileStore.LoadAll()
+                .FirstOrDefault(kv => string.Equals(kv.Key, "Standard", StringComparison.OrdinalIgnoreCase));
+            if (standardProfile.Value != null)
+                ApplyUserConfig(standardProfile.Value);
+
             UpdateInstallButtonEnabled();
         }
 
         private void SaveUserConfig() => ConfigStore.Save(BuildCurrentUserConfig());
 
         /// <summary>
-        /// Momentaufnahme der aktuellen Auswahl/Pfade/Sprachen/Optionen - Basis
-        /// sowohl fuer config.json (automatisch bei jedem Beenden) als auch fuer
-        /// benannte Profile (explizit per "Speichern als..."). Enthaelt bewusst
-        /// NIE Lizenzschluessel/-dateien, weil AppUserSettings dafuer kein Feld
-        /// hat - gilt dadurch automatisch auch fuer Profile.
+        /// Momentaufnahme der aktuellen Auswahl/Pfade/Optionen plus der globalen
+        /// Spracheinstellung - Basis sowohl fuer config.json (automatisch bei
+        /// jedem Beenden) als auch fuer benannte Profile (explizit per
+        /// "Speichern als..."). Enthaelt bewusst NIE Lizenzschluessel/-dateien,
+        /// weil AppUserSettings dafuer kein Feld hat - gilt dadurch automatisch
+        /// auch fuer Profile.
         /// </summary>
         private UserConfig BuildCurrentUserConfig()
         {
-            var cfg = new UserConfig();
+            var cfg = new UserConfig
+            {
+                global_language = _cmbGlobalLanguage.SelectedItem as string ?? "Deutsch",
+            };
             foreach (var row in _rows)
             {
                 cfg.apps[row.Source.id] = new AppUserSettings
                 {
                     selected = row.Selected,
                     install_path = row.PathEditable ? row.InstallPath : null,
-                    language = row.LanguageSelectable ? row.SelectedLanguage : null,
                     options = row.Options.Count > 0 ? new Dictionary<string, bool>(row.Options) : null,
                     choice_options = row.ChoiceOptions.Count > 0 ? new Dictionary<string, string>(row.ChoiceOptions) : null,
                 };
@@ -474,8 +498,6 @@ namespace BasicInstaller
                     row.Selected = saved.selected;
                     if (!string.IsNullOrWhiteSpace(saved.install_path))
                         row.InstallPath = saved.install_path;
-                    if (!string.IsNullOrWhiteSpace(saved.language))
-                        row.SelectedLanguage = saved.language;
                     if (saved.options != null)
                         foreach (var kv in saved.options)
                             row.Options[kv.Key] = kv.Value;
@@ -489,12 +511,36 @@ namespace BasicInstaller
                 }
             }
 
+            if (!string.IsNullOrWhiteSpace(cfg.global_language) && _cmbGlobalLanguage.Items.Contains(cfg.global_language))
+                _cmbGlobalLanguage.SelectedItem = cfg.global_language; // triggert ApplyGlobalLanguage selbst
+            else
+                ApplyGlobalLanguage(_cmbGlobalLanguage.SelectedItem as string ?? "Deutsch");
+
             // Einfachster robuster Weg, die Grid-Zellen nach Aenderungen an den
             // gebundenen Objekten neu zu rendern (BindingList meldet reine
             // Property-Aenderungen sonst nicht automatisch ans DataGridView).
             _grid.DataSource = null;
             _grid.DataSource = _rows;
             UpdateInstallButtonEnabled();
+        }
+
+        /// <summary>
+        /// Setzt SelectedLanguage auf allen sprachfaehigen Zeilen auf die beste
+        /// Uebereinstimmung mit der global gewaehlten Sprache (z.B. "de" oder
+        /// "en-US" fuer "Englisch", je nachdem was die App im Katalog anbietet).
+        /// Keine Aenderung, wenn die App gar keine Sprachvariante hat.
+        /// </summary>
+        private void ApplyGlobalLanguage(string globalChoice)
+        {
+            if (_rows == null) return;
+            var prefix = globalChoice == "Englisch" ? "en" : "de";
+            foreach (var row in _rows)
+            {
+                if (!row.LanguageSelectable) continue;
+                var match = row.AvailableLanguages.FirstOrDefault(l => l.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+                if (match != null)
+                    row.SelectedLanguage = match;
+            }
         }
 
         private void RefreshProfileList(string selectName)
@@ -559,16 +605,6 @@ namespace BasicInstaller
             {
                 if (!(gridRow.DataBoundItem is AppRow row)) continue;
 
-                var langCell = (DataGridViewComboBoxCell)gridRow.Cells[_colLanguage.Index];
-                langCell.Items.Clear();
-                langCell.Items.AddRange(row.AvailableLanguages);
-                langCell.Value = row.SelectedLanguage;
-                if (!row.LanguageSelectable)
-                {
-                    gridRow.Cells[_colLanguage.Index].ReadOnly = true;
-                    gridRow.Cells[_colLanguage.Index].Style.BackColor = SystemColors.Control;
-                }
-
                 if (!row.PathEditable)
                 {
                     gridRow.Cells[_colPath.Index].ReadOnly = true;
@@ -576,24 +612,16 @@ namespace BasicInstaller
                     gridRow.Cells[_colPath.Index].Value = "(kein Pfad-Override möglich)";
                 }
 
-                if (!row.LicenseKeyEditable)
-                {
-                    gridRow.Cells[_colLicense.Index].ReadOnly = true;
-                    gridRow.Cells[_colLicense.Index].Style.BackColor = SystemColors.Control;
-                    gridRow.Cells[_colLicense.Index].Value = "(nicht erforderlich)";
-                }
-                else if (!string.IsNullOrEmpty(row.LicenseKey))
-                {
-                    gridRow.Cells[_colLicense.Index].Value = row.LicenseKey;
-                }
-
-                if (!row.HasOptions)
+                // Zahnrad nur ausblenden, wenn die Zeile WEDER Options-Checkboxen
+                // NOCH einen Lizenzmechanismus hat - sonst waere z.B. ESET (nur
+                // Lizenz, keine "options") faelschlich ohne Zahnrad.
+                if (!row.HasOptions && !row.LicenseKeyEditable)
                 {
                     // UseColumnTextForButtonValue=true (Spaltenebene) wuerde den
                     // Button-Text sonst fuer ALLE Zellen erzwingen und ein
                     // leeres cell.Value ignorieren - deshalb hier zusaetzlich
                     // pro Zelle auf false setzen, um das Zahnrad fuer Zeilen
-                    // ohne Optionen wirklich auszublenden.
+                    // ohne Optionen/Lizenz wirklich auszublenden.
                     var optionsCell = (DataGridViewButtonCell)gridRow.Cells[_colOptions.Index];
                     optionsCell.UseColumnTextForButtonValue = false;
                     optionsCell.Value = "";
@@ -614,7 +642,7 @@ namespace BasicInstaller
             if (e.RowIndex < 0) return;
             if (e.ColumnIndex != _colOptions.Index) return;
             if (!(_grid.Rows[e.RowIndex].DataBoundItem is AppRow row)) return;
-            if (!row.HasOptions) return;
+            if (!row.HasOptions && !row.LicenseKeyEditable) return;
 
             using (var dlg = new OptionsDialog(row))
             {
@@ -624,8 +652,6 @@ namespace BasicInstaller
                         WindowsCredentialStore.Save(WindowsCredentialStore.KeyForApp(row.Source.id), row.LicenseKey);
                     else
                         WindowsCredentialStore.Delete(WindowsCredentialStore.KeyForApp(row.Source.id));
-
-                    _grid.Rows[e.RowIndex].Cells[_colLicense.Index].Value = row.LicenseKey;
                 }
             }
         }
@@ -851,7 +877,7 @@ namespace BasicInstaller
         private async Task OfferUpdateIfAvailableAsync(bool interactive)
         {
             var localVersion = FormatAssemblyVersion();
-            _lblStatus.Text = "Suche nach App-Updates ...";
+            _lblStatus.Text = "Suche nach Basic-Installer-Updates ...";
 
             var release = await AutoUpdateService.CheckForUpdateAsync();
 
@@ -859,8 +885,16 @@ namespace BasicInstaller
             {
                 _lblStatus.Text = "Bereit.";
                 if (interactive)
-                    MessageBox.Show(this, "Es konnte nicht auf Updates geprüft werden (kein Netz oder GitHub nicht erreichbar).",
+                {
+                    // AutoUpdateService.LastCheckError nennt den tatsaechlichen Grund
+                    // (Netzwerkfehler, GitHub-Rate-Limit, kaputtes JSON, ...) statt
+                    // immer derselben pauschalen Meldung - siehe Kommentar dort.
+                    var reason = string.IsNullOrWhiteSpace(AutoUpdateService.LastCheckError)
+                        ? "unbekannter Grund"
+                        : AutoUpdateService.LastCheckError;
+                    MessageBox.Show(this, $"Es konnte nicht auf Updates geprüft werden:\n\n{reason}",
                         "Basic Installer", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
                 return;
             }
 

@@ -14,7 +14,8 @@
       "sha256": null,
       "default_language": null,
       "languages": null,
-      "notes": "Silent-Setup von Brave installiert bereits ohne Rueckfrage; Installationspfad nicht per Kommandozeile umlenkbar. Sprache folgt der Windows-Systemsprache, ist beim Standalone-Installer nicht separat waehlbar -> 'languages' bewusst leer, GUI zeigt nur 'Standard (Systemsprache)'."
+      "notes": "Silent-Setup von Brave installiert bereits ohne Rueckfrage; Installationspfad nicht per Kommandozeile umlenkbar. Sprache folgt der Windows-Systemsprache, ist beim Standalone-Installer nicht separat waehlbar -> 'languages' bewusst leer, GUI zeigt nur 'Standard (Systemsprache)'.",
+      "detect_display_name_contains": "Brave"
     },
     {
       "id": "firefox",
@@ -40,7 +41,8 @@
           "extra_args": null
         }
       },
-      "notes": "Stub-Installer, laedt bei Ausfuehrung die zur lang=-URL passende Version nach. Weitere Locales einfach nach gleichem Muster ergaenzen."
+      "notes": "Stub-Installer, laedt bei Ausfuehrung die zur lang=-URL passende Version nach. Weitere Locales einfach nach gleichem Muster ergaenzen.",
+      "detect_display_name_contains": "Firefox"
     },
     {
       "id": "vlc",
@@ -70,7 +72,8 @@
           ]
         }
       },
-      "notes": "Ein Installer fuer alle Sprachen; /L=<LCID> waehlt die UI-Sprache (1031=Deutsch, 1033=English US). Weitere LCIDs: https://learn.microsoft.com/windows/win32/intl/locale-identifiers"
+      "notes": "Ein Installer fuer alle Sprachen; /L=<LCID> waehlt die UI-Sprache (1031=Deutsch, 1033=English US). Weitere LCIDs: https://learn.microsoft.com/windows/win32/intl/locale-identifiers",
+      "detect_display_name_contains": "VLC"
     },
     {
       "id": "irfanview",
@@ -87,7 +90,8 @@
       "sha256": null,
       "default_language": null,
       "languages": null,
-      "notes": "IrfanView hat die Versionsnummer im Dateinamen (z.B. iview469_x64_setup.exe) und keine stabile 'latest'-URL -> installer_url muss bei jedem Update manuell gepflegt werden. UI-Sprache kommt per separatem Sprachplugin (irfanview_*_languages.zip), nicht ueber einen Silent-Switch -> hier nicht modelliert, GUI zeigt 'Standard'."
+      "notes": "IrfanView hat die Versionsnummer im Dateinamen (z.B. iview469_x64_setup.exe) und keine stabile 'latest'-URL -> installer_url muss bei jedem Update manuell gepflegt werden. UI-Sprache kommt per separatem Sprachplugin (irfanview_*_languages.zip), nicht ueber einen Silent-Switch -> hier nicht modelliert, GUI zeigt 'Standard'.",
+      "detect_display_name_contains": "IrfanView"
     },
     {
       "id": "acrobat_reader",
@@ -116,7 +120,8 @@
           "extra_args": null
         }
       },
-      "notes": "Adobe bietet keine stabile Direct-Download-URL fuer die jeweils neueste Version; installer_url je Sprachvariante manuell setzen (Adobe liefert sprachspezifische Installer-Dateien, z.B. ..._de_DE.exe / ..._en_US.exe - URL hier je Locale eintragen)."
+      "notes": "Adobe bietet keine stabile Direct-Download-URL fuer die jeweils neueste Version; installer_url je Sprachvariante manuell setzen (Adobe liefert sprachspezifische Installer-Dateien, z.B. ..._de_DE.exe / ..._en_US.exe - URL hier je Locale eintragen).",
+      "detect_display_name_contains": "Acrobat Reader"
     },
     {
       "id": "eset_nod32",
@@ -146,7 +151,8 @@
           "extra_args": null
         }
       },
-      "notes": "ESET bietet keine anonyme Trial-Direct-URL wie Brave/VLC: installer_url muss aus dem ESET-/MSP-Account geladen werden (dort auch je Sprache getrennt verfuegbar). Genaue Schalter je Version vor Produktiveinsatz gegen die offizielle ESET-Silent-Install-Doku pruefen - hier nur als Platzhalter gepflegt. Korrektur: der Lizenzschluessel stand vorher als fest eingebackener Platzhalter ('--license-key=PLACEHOLDER-LICENSE-KEY') in silent_args und wurde nie durch den tatsaechlich eingegebenen Schluessel ersetzt - license_type war zudem gar nicht gesetzt, wodurch die Lizenz-Spalte in der GUI gesperrt blieb. Jetzt per license_type=cli_arg + license_key_arg_template korrekt angebunden (SilentInstaller.cs haengt den Schluessel nur an, wenn tatsaechlich einer eingegeben wurde; leeres Feld = Installation ohne --license-key, Produkt bleibt unaktiviert statt mit einem bedeutungslosen Platzhalter zu laufen). Policy-Vorgabe AS Computertechnik: Erkennung potenziell unerwuenschter Anwendungen (PUA) ist bewusst aktiviert (--enable-pua=1, in der ESET-Kommandozeilen-Doku so dokumentiert). Die Rueckmeldung an ESET (LiveGrid-Reputationssystem) soll dagegen deaktiviert sein - dafuer reicht laut ESET-Doku kein einfacher CLI-Switch wie bei --enable-pua, das laeuft ueber die erweiterte XML-Config (--cfg=...). Absichtlich NICHT geraten: kein --enable-livegrid=0 o.ae. eingetragen, weil das ein unverifizierter Flag-Name waere. Offener Punkt: vor Produktiveinsatz das korrekte --cfg=-XML-Setup fuer LiveGrid=aus ermitteln und hier ergaenzen."
+      "notes": "ESET bietet keine anonyme Trial-Direct-URL wie Brave/VLC: installer_url muss aus dem ESET-/MSP-Account geladen werden (dort auch je Sprache getrennt verfuegbar). Genaue Schalter je Version vor Produktiveinsatz gegen die offizielle ESET-Silent-Install-Doku pruefen - hier nur als Platzhalter gepflegt. Korrektur: der Lizenzschluessel stand vorher als fest eingebackener Platzhalter ('--license-key=PLACEHOLDER-LICENSE-KEY') in silent_args und wurde nie durch den tatsaechlich eingegebenen Schluessel ersetzt - license_type war zudem gar nicht gesetzt, wodurch die Lizenz-Spalte in der GUI gesperrt blieb. Jetzt per license_type=cli_arg + license_key_arg_template korrekt angebunden (SilentInstaller.cs haengt den Schluessel nur an, wenn tatsaechlich einer eingegeben wurde; leeres Feld = Installation ohne --license-key, Produkt bleibt unaktiviert statt mit einem bedeutungslosen Platzhalter zu laufen). Policy-Vorgabe AS Computertechnik: Erkennung potenziell unerwuenschter Anwendungen (PUA) ist bewusst aktiviert (--enable-pua=1, in der ESET-Kommandozeilen-Doku so dokumentiert). Die Rueckmeldung an ESET (LiveGrid-Reputationssystem) soll dagegen deaktiviert sein - dafuer reicht laut ESET-Doku kein einfacher CLI-Switch wie bei --enable-pua, das laeuft ueber die erweiterte XML-Config (--cfg=...). Absichtlich NICHT geraten: kein --enable-livegrid=0 o.ae. eingetragen, weil das ein unverifizierter Flag-Name waere. Offener Punkt: vor Produktiveinsatz das korrekte --cfg=-XML-Setup fuer LiveGrid=aus ermitteln und hier ergaenzen.",
+      "detect_display_name_contains": "ESET NOD32"
     },
     {
       "id": "winrar",

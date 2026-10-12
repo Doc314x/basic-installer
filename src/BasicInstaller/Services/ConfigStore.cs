@@ -23,6 +23,12 @@ namespace BasicInstaller.Services
     public class UserConfig
     {
         public Dictionary<string, AppUserSettings> apps { get; set; } = new Dictionary<string, AppUserSettings>();
+
+        // Sprache ist global statt pro App (Nutzerwunsch) - "Deutsch" oder
+        // "Englisch", siehe MainForm.ApplyGlobalLanguage. Das veraltete
+        // AppUserSettings.language-Feld bleibt nur fuer alte config.json-
+        // Dateien aus frueheren Versionen bestehen (wird beim Laden ignoriert).
+        public string global_language { get; set; } = "Deutsch";
     }
 
     /// <summary>
