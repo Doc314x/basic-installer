@@ -106,6 +106,11 @@ namespace BasicInstaller.Services
                 WorkingDirectory = Path.GetDirectoryName(installerPath) ?? Environment.CurrentDirectory,
             };
 
+            // Pro App einstellbar (install_timeout_minutes), sonst das Standardlimit.
+            var timeout = app.install_timeout_minutes > 0
+                ? TimeSpan.FromMinutes(app.install_timeout_minutes)
+                : InstallTimeout;
+
             InstallResult result;
             try
             {
@@ -115,13 +120,13 @@ namespace BasicInstaller.Services
                     {
                         result = new InstallResult { Outcome = InstallOutcome.LaunchFailed, Message = "Prozess konnte nicht gestartet werden." };
                     }
-                    else if (!process.WaitForExit((int)InstallTimeout.TotalMilliseconds))
+                    else if (!process.WaitForExit((int)timeout.TotalMilliseconds))
                     {
                         TryKill(process);
                         result = new InstallResult
                         {
                             Outcome = InstallOutcome.TimedOut,
-                            Message = $"Installer hat nach {InstallTimeout.TotalMinutes:N0} Minuten nicht reagiert und wurde beendet."
+                            Message = $"Installer hat nach {timeout.TotalMinutes:N0} Minuten nicht reagiert und wurde beendet."
                         };
                     }
                     else if (process.ExitCode != 0)
