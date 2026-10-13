@@ -41,6 +41,21 @@ namespace BasicInstaller.Services
             return app.installer_url;
         }
 
+        /// <summary>
+        /// Wie ResolveInstallerUrl, loest aber zusaetzlich {version}/{version_nodots}
+        /// ueber den VersionResolver auf. Null, wenn keine URL gepflegt ist oder die
+        /// Version nicht ermittelt werden konnte (und kein fallback_version existiert).
+        /// </summary>
+        public static async System.Threading.Tasks.Task<string> ResolveInstallerUrlAsync(AppEntry app, string languageCode)
+        {
+            var url = ResolveInstallerUrl(app, languageCode);
+            if (!VersionResolver.ContainsPlaceholder(url))
+                return url;
+
+            var version = await VersionResolver.ResolveAsync(app, allowFallback: true).ConfigureAwait(false);
+            return string.IsNullOrWhiteSpace(version) ? null : VersionResolver.Apply(url, version);
+        }
+
         public static string[] ResolveExtraArgs(AppEntry app, string languageCode)
         {
             if (app.languages != null

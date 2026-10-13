@@ -53,7 +53,10 @@
       "name": "VLC Media Player",
       "category": "Multimedia",
       "homepage": "https://www.videolan.org/vlc/",
-      "installer_url": "https://download.videolan.org/vlc/last/win64/vlc-3.0.24-win64.exe",
+      "installer_url": "https://get.videolan.org/vlc/{version}/win64/vlc-{version}-win64.exe",
+      "version_url": "https://download.videolan.org/vlc/last/win64/",
+      "version_regex": "vlc-(\\d+\\.\\d+\\.\\d+)-win64\\.exe",
+      "fallback_version": "3.0.24",
       "installer_type": "exe",
       "silent_args": [
         "/S"
@@ -64,19 +67,19 @@
       "default_language": "de",
       "languages": {
         "de": {
-          "installer_url": "https://download.videolan.org/vlc/last/win64/vlc-3.0.24-win64.exe",
+          "installer_url": "https://get.videolan.org/vlc/{version}/win64/vlc-{version}-win64.exe",
           "extra_args": [
             "/L=1031"
           ]
         },
         "en": {
-          "installer_url": "https://download.videolan.org/vlc/last/win64/vlc-3.0.24-win64.exe",
+          "installer_url": "https://get.videolan.org/vlc/{version}/win64/vlc-{version}-win64.exe",
           "extra_args": [
             "/L=1033"
           ]
         }
       },
-      "notes": "WICHTIG - Korrektur, live gefunden (12.10.2026): die vorherige installer_url (get.videolan.org/vlc/last/win64/vlc-win64.exe) lieferte einen echten 404 (\"not available on our mirrors\") - VLC hat den generischen, versionslosen Dateinamen offenbar eingestellt. Verzeichnis-Listing (download.videolan.org/vlc/last/win64/) zeigt nur noch versionierte Dateien (z.B. vlc-3.0.24-win64.exe) - keine stabile \"latest\"-URL mehr verfuegbar, genau wie bei IrfanView/WinRAR/7-Zip/Notepad++. installer_url jetzt ehrlich null statt eines kaputten Links - bei jedem Update manuell die aktuelle Versionsnummer eintragen (z.B. https://download.videolan.org/vlc/last/win64/vlc-3.0.24-win64.exe). /L=<LCID> und rarreg-unabhaengige Mechanik unveraendert korrekt.",
+      "notes": "Version wird zur Laufzeit ermittelt (version_url = Verzeichnisliste download.videolan.org/vlc/last/win64/, hoechster Treffer) und in {version} der installer_url eingesetzt (get.videolan.org/vlc/{version}/win64/vlc-{version}-win64.exe, Schema live geprueft 13.10.2026). fallback_version nur fuer den Download, falls die Ermittlung scheitert. /L=<LCID> waehlt die Sprache.",
       "detect_display_name_contains": "VLC"
     },
     {
@@ -170,7 +173,10 @@
       "name": "WinRAR",
       "category": "Archivierung",
       "homepage": "https://www.win-rar.com/",
-      "installer_url": "https://www.rarlab.com/rar/winrar-x64-723.exe",
+      "installer_url": "https://www.rarlab.com/rar/winrar-x64-{version}.exe",
+      "version_url": "https://www.rarlab.com/download.htm",
+      "version_regex": "/rar/winrar-x64-(\\d+)\\.exe",
+      "fallback_version": "723",
       "installer_type": "exe",
       "silent_args": [
         "/S"
@@ -212,14 +218,17 @@
       "sha256": null,
       "default_language": null,
       "languages": null,
-      "notes": "WICHTIG - vor Produktiveinsatz gegen die offizielle WinRAR-Doku pruefen, Stand Websuche (silentinstallhq.com, ManageEngine, ntlite.com-Forum): /S fuer Silent ist mehrfach unabhaengig bestaetigt. rarreg.key neben den Installer legen fuer die Lizenz ist ebenfalls unabhaengig bestaetigt (ntlite-Forum-Beispiel deckt sich mit dem bisherigen Katalog-Eintrag). /D=\"{path}\" fuer einen Pfad-Override wird von mehreren Community-Quellen genannt, ABER ein ElevenForum-Thread fragt explizit, ob ein Pfad-Override ueberhaupt moeglich ist ('Winrar 5 install directory override?') - uneindeutig, deshalb bewusst weiter null statt eines widerspruechlich belegten Werts. Die WinRAR.ini-Section-/Key-Namen fuer Kontextmenue/Dateizuordnung ([Shell integration]/ContextMenu/CascadedMenu, [Associate]/rar/zip/7z) sind NICHT verifizierbar gefunden (auch die offizielle WinRAR.ini-Doku auf techshelps.github.io nennt sie nicht) - bleibt ein unverifizierter Platzhalter, vor Nutzung an einer echten Installation gegenpruefen (z.B. Optionen setzen, WinRAR.ini-Inhalt ansehen). installer_url bleibt bewusst null: versionsnummerierter Dateiname ohne stabile 'latest'-URL."
+      "notes": "Version (z.B. 723 = 7.23) wird zur Laufzeit von www.rarlab.com/download.htm gelesen. Die WinRAR.ini-Section-/Key-Namen (Kontextmenue/Dateizuordnung) sind weiterhin ein UNVERIFIZIERTER Platzhalter - an einer echten Installation pruefen (Issue #3). /S fuer Silent ist bestaetigt; path_arg_template bewusst null (Pfad-Override widerspruechlich belegt)."
     },
     {
       "id": "7zip",
       "name": "7-Zip",
       "category": "Archivierung",
       "homepage": "https://www.7-zip.org/",
-      "installer_url": "https://github.com/ip7z/7zip/releases/download/26.04/7z2604-x64.exe",
+      "installer_url": "https://github.com/ip7z/7zip/releases/download/{version}/7z{version_nodots}-x64.exe",
+      "version_url": "https://github.com/ip7z/7zip/releases/latest",
+      "version_regex": "releases/tag/v?(\\d+(?:\\.\\d+)+)",
+      "fallback_version": "26.04",
       "installer_type": "exe",
       "silent_args": [
         "/S"
@@ -230,14 +239,17 @@
       "sha256": null,
       "default_language": null,
       "languages": null,
-      "notes": "7-Zip bietet fuer Windows sowohl eine .exe- als auch eine .msi-Variante; hier ist bewusst die .exe-Variante mit dem dokumentierten /S-Silent-Switch modelliert (installer_type im Katalog ist bisher durchgehend 'exe'). Die MSI-Variante (Silent ueblich via msiexec /qn) ist NICHT modelliert. installer_url ist bewusst null: der Dateiname ist versionsnummeriert (z.B. 7z2409-x64.exe) ohne stabile 'latest'-URL, analog zu IrfanView - bei jedem Update manuell pflegen. path_arg_template ist bewusst null: ein verifizierter Installationsverzeichnis-Schalter fuer die .exe-Variante liegt hier nicht mit ausreichender Sicherheit vor. Sprachauswahl ist nicht als separater Installer-Switch bekannt (7-Zip bringt mehrere Sprachen im selben Installer mit und waehlt i.d.R. nach Systemsprache) -> languages bewusst leer."
+      "notes": "Version wird zur Laufzeit aus dem Redirect-Ziel von github.com/ip7z/7zip/releases/latest (.../tag/26.04) gelesen - ohne GitHub-API, daher ohne Rate-Limit. {version}=26.04, {version_nodots}=2604 fuer den Dateinamen 7z2604-x64.exe. Bewusst die .exe-Variante mit /S (MSI nicht modelliert). path_arg_template null: kein verifizierter Verzeichnis-Switch."
     },
     {
       "id": "notepadpp",
       "name": "Notepad++",
       "category": "Entwicklung/Text",
       "homepage": "https://notepad-plus-plus.org/",
-      "installer_url": "https://github.com/notepad-plus-plus/notepad-plus-plus/releases/download/v8.9.8.1/npp.8.9.8.1.Installer.x64.exe",
+      "installer_url": "https://github.com/notepad-plus-plus/notepad-plus-plus/releases/download/v{version}/npp.{version}.Installer.x64.exe",
+      "version_url": "https://github.com/notepad-plus-plus/notepad-plus-plus/releases/latest",
+      "version_regex": "releases/tag/v?(\\d+(?:\\.\\d+)+)",
+      "fallback_version": "8.9.8.1",
       "installer_type": "exe",
       "silent_args": [
         "/S"
@@ -248,14 +260,17 @@
       "sha256": null,
       "default_language": null,
       "languages": null,
-      "notes": "Notepad++ nutzt einen NSIS-Installer; /S (silent) und /D=<Pfad> (Installationsverzeichnis, muss laut NSIS-Konvention der letzte Parameter sein) sind im Notepad++-Benutzerhandbuch zur unbeaufsichtigten Installation dokumentiert - gleiches Muster wie bereits bei VLC im Katalog. installer_url ist bewusst null: der Dateiname ist versionsnummeriert (z.B. npp.8.x.x.Installer.x64.exe) ohne stabile 'latest'-URL, analog zu IrfanView - bei jedem Update manuell pflegen. Eine UI-Sprachsteuerung per Installer-Switch ist nicht bekannt (Sprache wird nach Installation in den Settings gewaehlt) -> languages bewusst leer."
+      "notes": "Version wird zur Laufzeit aus dem Redirect-Ziel von github.com/notepad-plus-plus/notepad-plus-plus/releases/latest (.../tag/v8.9.8.1) gelesen, ohne GitHub-API. NSIS-Installer: /S und /D=<Pfad> (muss letzter Parameter sein)."
     },
     {
       "id": "libreoffice",
       "name": "LibreOffice",
       "category": "Office",
       "homepage": "https://www.libreoffice.org/",
-      "installer_url": "https://download.documentfoundation.org/libreoffice/stable/26.8.1/win/x86_64/LibreOffice_26.8.1_Win_x86-64.msi",
+      "installer_url": "https://download.documentfoundation.org/libreoffice/stable/{version}/win/x86_64/LibreOffice_{version}_Win_x86-64.msi",
+      "version_url": "https://download.documentfoundation.org/libreoffice/stable/",
+      "version_regex": "href=\"(\\d+\\.\\d+\\.\\d+)/\"",
+      "fallback_version": "26.8.1",
       "installer_type": "msi",
       "silent_args": [
         "/qn",
@@ -269,7 +284,7 @@
       "sha256": null,
       "default_language": null,
       "languages": null,
-      "notes": "Code-Gap ist behoben: installer_type=msi wird von SilentInstaller.cs jetzt ueber msiexec.exe /i \"<datei>\" ... gestartet. silent_args (/qn /norestart ALLUSERS=1 ADDLOCAL=ALL) und INSTALLDIR fuer den Pfad-Override sind ueber mehrere unabhaengige Quellen uebereinstimmend bestaetigt (silentinstallhq.com, salivity.github.io 'LibreOffice MSI Properties for Silent Deployment', get-itsolutions.com). installer_url bleibt bewusst null: verifiziertes URL-MUSTER ist https://download.documentfoundation.org/libreoffice/stable/{VERSION}/win/x86_64/LibreOffice_{VERSION}_Win_x86-64.msi, aber keine stabile 'latest'-URL ohne Versionsnummer gefunden - {VERSION} bei jedem Update manuell durch die aktuelle Version ersetzen (z.B. 26.8.1, Stand der Recherche). Sprachpakete sind bei LibreOffice separate zusaetzliche MSIs - Mechanismus dafuer hier nicht recherchiert, daher default_language/languages weiterhin bewusst leer."
+      "notes": "Version wird zur Laufzeit aus der Verzeichnisliste download.documentfoundation.org/libreoffice/stable/ ermittelt (hoechster Treffer). MSI laeuft ueber msiexec; silent_args und INSTALLDIR sind mehrfach bestaetigt. Sprachpakete sind separate MSIs - nicht modelliert."
     },
     {
       "id": "thunderbird",
