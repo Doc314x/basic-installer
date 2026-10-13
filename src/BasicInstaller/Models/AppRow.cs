@@ -48,10 +48,18 @@ namespace BasicInstaller.Models
         /// 7-Zip "26.04" vs. Dateiname "2604"; LibreOffice "26.8.1.2" vs. "26.8.1"
         /// (Praefix der Teile gilt als gleich).
         /// </summary>
+        /// <summary>"7.23.0" -> "7.23" (WinRAR meldet in der Registry eine Stelle mehr als die Download-Seite).</summary>
+        private static string TrimTrailingZeroParts(string version)
+        {
+            while (version.EndsWith(".0", StringComparison.Ordinal))
+                version = version.Substring(0, version.Length - 2);
+            return version;
+        }
+
         public static bool SameVersion(string a, string b)
         {
-            a = (a ?? "").Trim().TrimStart('v', 'V');
-            b = (b ?? "").Trim().TrimStart('v', 'V');
+            a = TrimTrailingZeroParts((a ?? "").Trim().TrimStart('v', 'V'));
+            b = TrimTrailingZeroParts((b ?? "").Trim().TrimStart('v', 'V'));
             if (a == b) return true;
             if (a.Replace(".", "") == b.Replace(".", "")) return true;
 

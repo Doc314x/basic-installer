@@ -964,6 +964,17 @@ namespace BasicInstaller
                 _progressBar.Value = Math.Min(100, (int)(done * 100.0 / selected.Count));
             }
 
+            // Einige Installer (im Praxistest WinRAR) kehren zurueck, bevor sie ihren Uninstall-
+            // Registry-Eintrag geschrieben haben - der Scan direkt nach dem Installer zeigte dann
+            // "–", obwohl installiert. Deshalb am Ende des Laufs noch einmal kurz warten und
+            // alle gewaehlten Zeilen neu pruefen.
+            await Task.Delay(2500);
+            foreach (var row in selected)
+            {
+                row.RefreshInstalledVersion();
+                RefreshInstalledCell(row);
+            }
+
             var ok = done - failed - skipped;
             _lblStatus.Text = $"Fertig: {ok} erfolgreich, {skipped} übersprungen, {failed} fehlgeschlagen.";
 
