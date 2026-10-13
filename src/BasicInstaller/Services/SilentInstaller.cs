@@ -189,7 +189,14 @@ namespace BasicInstaller.Services
                         : KnownFolders.GetDownloadsFolder();
 
                 Directory.CreateDirectory(destinationDir); // existiert praktisch immer, aber kein Grund darauf zu vertrauen
-                var destination = Path.Combine(destinationDir, Path.GetFileName(installerPath));
+                // Der Download-Cache legt Dateien als "<app-id>_<name>" ab (Downloader). Dieses interne
+                // Praefix gehoert nicht auf den Zielort ("shutup10_OOSU10.exe", "teamviewer_qs_asct_
+                // TeamViewerQS.exe" im Praxistest) - hier wieder entfernen.
+                var targetName = Path.GetFileName(installerPath);
+                var cachePrefix = app.id + "_";
+                if (targetName.StartsWith(cachePrefix, StringComparison.OrdinalIgnoreCase) && targetName.Length > cachePrefix.Length)
+                    targetName = targetName.Substring(cachePrefix.Length);
+                var destination = Path.Combine(destinationDir, targetName);
                 File.Copy(installerPath, destination, overwrite: true);
 
                 var message = $"Portable Anwendung abgelegt unter: {destination}";
