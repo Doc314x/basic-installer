@@ -21,5 +21,10 @@ namespace BasicInstaller
         // Semantik, kein Markenbezug wie der Accent-Ton.
         public static readonly Color Success = Color.FromArgb(0x2E, 0x7D, 0x32);
         public static readonly Color SuccessLight = Color.FromArgb(0xE8, 0xF5, 0xE9);
+
+        // Installiert, aber veraltet: Zeilen in der Programmliste werden rot hinterlegt
+        // (aktuell = gruen, siehe MainForm.ApplyRowStatusStyle).
+        public static readonly Color Danger = Color.FromArgb(0xC6, 0x28, 0x28);
+        public static readonly Color DangerLight = Color.FromArgb(0xFF, 0xEB, 0xEE);
     }
 }

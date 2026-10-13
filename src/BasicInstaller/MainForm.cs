@@ -191,7 +191,7 @@ namespace BasicInstaller
             // nach Name/Kategorie, blendet nicht passende Zeilen einfach aus.
             profileBar.Controls.Add(new Label { Text = "🔍 Suchen:", AutoSize = true, Margin = new Padding(24, 6, 4, 0) });
             _txtSearch = new TextBox { Width = 180 };
-            _txtSearch.TextChanged += (s, e) => ApplySearchFilter();
+            _txtSearch.TextChanged += (s, e) => ApplySearchFilterSafe();
             profileBar.Controls.Add(_txtSearch);
 
             BuildGrid();
@@ -551,6 +551,28 @@ namespace BasicInstaller
             }
         }
 
+        private void ApplySearchFilterSafe()
+        {
+            // BUG (im Praxistest gefunden): In einer datengebundenen DataGridView wirft
+            // "Row.Visible = false" auf der AKTUELLEN Zeile eine InvalidOperationException ("Die mit der
+            // Position des Waehrungs-Managers verknuepfte Zeile kann nicht unsichtbar gemacht werden") -
+            // der Suchfilter stuerzte ab, sobald die gerade markierte Zeile nicht zum Suchtext passte,
+            // und Windows zeigte nur den allgemeinen Absturzdialog. Deshalb vorher die aktuelle Zelle
+            // loesen; als zweite Sicherung die Bindung kurz aussetzen.
+            try
+            {
+                _grid.CurrentCell = null;
+                ApplySearchFilter();
+            }
+            catch (InvalidOperationException)
+            {
+                var cm = BindingContext[_grid.DataSource] as CurrencyManager;
+                cm?.SuspendBinding();
+                try { ApplySearchFilter(); }
+                finally { cm?.ResumeBinding(); }
+            }
+        }
+
         private void ShowAboutDialog()
         {
             // Kontaktdaten absichtlich NICHT im Hauptfenster, sondern nur hier -
@@ -827,8 +849,15 @@ namespace BasicInstaller
 
         private void SetAllSelected(bool value)
         {
+            // BUG (im Praxistest gesehen): "Alle auswaehlen" bei aktivem Suchfilter hakte auch die
+            // ausgeblendeten Zeilen an - man installierte dann unsichtbare Programme mit. Deshalb
+            // gilt "Alle" nur fuer SICHTBARE Zeilen. "Keine" raeumt dagegen alles ab, auch
+            // Ausgeblendetes - eine versteckte Restauswahl waere die gefaehrlichere Ueberraschung.
             foreach (DataGridViewRow gridRow in _grid.Rows)
+            {
+                if (value && !gridRow.Visible) continue;
                 gridRow.Cells[_colSelected.Index].Value = value;
+            }
             UpdateInstallButtonEnabled();
         }
 
@@ -841,6 +870,16 @@ namespace BasicInstaller
         {
             foreach (var row in _rows)
                 row.RefreshInstalledVersion(); // Registry-Scan ist synchron und schnell
+
+            // Sofort einfaerben (installiert = gruen), noch vor der langsameren Online-Pruefung unten;
+            // dort wird anschliessend veraltet = rot nachgetragen.
+            foreach (DataGridViewRow gridRow in _grid.Rows)
+            {
+                if (!(gridRow.DataBoundItem is AppRow r0)) continue;
+                gridRow.Cells[_colInstalled.Index].Value = r0.InstalledVersion;
+                ApplyRowStatusStyle(gridRow, r0);
+            }
+            _grid.Invalidate();
 
             _lblStatus.Text = "Prüfe verfügbare Versionen (nur für Apps mit erkennbarer URL) ...";
 
@@ -882,20 +921,7 @@ namespace BasicInstaller
                     gridRow.Cells[_colSelected.Index].Value = true;
                 }
 
-                // Dezente Hervorhebung, wenn beide Werte bekannt sind UND
-                // voneinander abweichen - genau das war die zweimal gestellte
-                // Nutzerfrage ("ob aktuell oder ob Update moeglich").
-                var highlight = row.HasKnownUpdate ? Theme.AccentDark : Color.Empty;
-                var boldFont = row.HasKnownUpdate ? new Font(_grid.Font, FontStyle.Bold) : null;
-
-                // Name-Spalte mit einfaerben, nicht nur Installiert/Verfuegbar -
-                // nach Patch-My-PC-Vorbild sticht eine Zeile mit anstehendem
-                // Update schon beim Ueberfliegen der Namensliste ins Auge.
-                gridRow.Cells[_colName.Index].Style.ForeColor = highlight;
-                gridRow.Cells[_colName.Index].Style.Font = boldFont;
-                gridRow.Cells[_colInstalled.Index].Style.ForeColor = highlight;
-                gridRow.Cells[_colLatest.Index].Style.ForeColor = highlight;
-                gridRow.Cells[_colLatest.Index].Style.Font = boldFont;
+                ApplyRowStatusStyle(gridRow, row);
             }
 
             UpdateInstallButtonEnabled(); // falls die Auto-Auswahl oben den Installieren-Button gerade erst aktiviert hat
@@ -925,10 +951,26 @@ namespace BasicInstaller
             var failed = 0;
             var skipped = 0;
             var reportedOk = new List<AppRow>(); // Installer meldete Erfolg - wird unten gegen die Registry gegengeprueft
+            var skippedRows = new List<AppRow>();
+            var failedRows = new List<AppRow>();
+
+            // Laufzeit in der Statuszeile: lange Installer (Microsoft 365 laedt mehrere GB, VLC baut
+            // seinen Plugin-Cache) zeigten sonst nur "Bearbeite ..." und wirkten wie ein Haenger.
+            var currentLabel = "";
+            var rowClock = System.Diagnostics.Stopwatch.StartNew();
+            var ticker = new System.Windows.Forms.Timer { Interval = 1000 };
+            ticker.Tick += (s2, e2) =>
+            {
+                if (currentLabel.Length > 0)
+                    _lblStatus.Text = $"{currentLabel} - {rowClock.Elapsed:m\\:ss} min";
+            };
+            ticker.Start();
 
             foreach (var row in selected)
             {
-                _lblStatus.Text = $"Bearbeite {row.Name} ({done + 1}/{selected.Count}) ...";
+                currentLabel = $"Bearbeite {row.Name} ({done + 1}/{selected.Count})";
+                rowClock.Restart();
+                _lblStatus.Text = currentLabel + " ...";
                 AppendLog($"=== {row.Name} ===");
 
                 if (row.InstalledVersion != "–" && !row.HasKnownUpdate)
@@ -943,6 +985,7 @@ namespace BasicInstaller
                     // veraltet" dann schlicht nicht wissen.
                     AppendLog($"Übersprungen: bereits installiert (Version {row.InstalledVersion}).");
                     skipped++;
+                    skippedRows.Add(row);
                 }
                 else
                 {
@@ -951,11 +994,15 @@ namespace BasicInstaller
                         if (await InstallOneAsync(row))
                             reportedOk.Add(row);
                         else
+                        {
                             failed++;
+                            failedRows.Add(row);
+                        }
                     }
                     catch (Exception ex)
                     {
                         failed++;
+                        failedRows.Add(row);
                         AppendLog("FEHLER: " + ex.Message);
                     }
 
@@ -983,7 +1030,10 @@ namespace BasicInstaller
             // "OK", obwohl nichts installiert war. Wo der Katalog eine Erkennung kennt
             // (portable Apps und Apps ohne detect_display_name_contains ausgenommen), wird
             // das Ergebnis deshalb gegen die Registry geprueft und sonst deutlich gewarnt.
-            var unverified = 0;
+            ticker.Stop();
+            ticker.Dispose();
+
+            var unverifiedRows = new List<AppRow>();
             foreach (var row in reportedOk)
             {
                 var src = row.Source;
@@ -992,9 +1042,10 @@ namespace BasicInstaller
                 if (string.Equals(src.installer_type, "portable", StringComparison.OrdinalIgnoreCase)) continue;
                 if (row.InstalledVersion != "–") continue;
 
-                unverified++;
+                unverifiedRows.Add(row);
                 AppendLog($"WARNUNG {row.Name}: Der Installer meldete Erfolg, das Programm wurde aber nicht in der Windows-Programmliste erkannt - bitte prüfen.");
             }
+            var unverified = unverifiedRows.Count;
 
             var ok = done - failed - skipped;
             _lblStatus.Text = $"Fertig: {ok} erfolgreich, {skipped} übersprungen, {failed} fehlgeschlagen"
@@ -1003,6 +1054,74 @@ namespace BasicInstaller
             UpdateStatusPills();
             SaveUserConfig();
             SetBusy(false);
+
+            // Deutliches Abschlusssignal (Nutzer-Feedback: nur die kleine Zeile unten im Fenster ging bei
+            // laengeren Laeufen unter): Ton, Taskleisten-Blinken falls das Fenster nicht vorne ist und
+            // eine Zusammenfassung pro Programm.
+            var report = new System.Text.StringBuilder();
+            foreach (var r in selected)
+            {
+                string mark;
+                if (failedRows.Contains(r)) mark = "✖ fehlgeschlagen";
+                else if (unverifiedRows.Contains(r)) mark = "⚠ installiert gemeldet, aber nicht erkannt";
+                else if (skippedRows.Contains(r)) mark = "↷ übersprungen (bereits aktuell, Version " + r.InstalledVersion + ")";
+                else mark = "✔ erfolgreich" + (r.InstalledVersion != "–" ? " (Version " + r.InstalledVersion + ")" : "");
+                report.AppendLine($"{r.Name}: {mark}");
+            }
+            var problem = failed > 0 || unverified > 0;
+            ShowCompletion(
+                problem ? "Installation mit Problemen beendet" : "Installation abgeschlossen",
+                report.ToString().TrimEnd() + (problem ? "\r\n\r\nDetails stehen im Log unten im Fenster." : ""),
+                problem);
+        }
+
+        // ---------------------------------------------------------------
+        // Abschlusssignal
+        // ---------------------------------------------------------------
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct FLASHWINFO
+        {
+            public uint cbSize;
+            public IntPtr hwnd;
+            public uint dwFlags;
+            public uint uCount;
+            public uint dwTimeout;
+        }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool FlashWindowEx(ref FLASHWINFO pwfi);
+
+        /// <summary>
+        /// Ton + Taskleisten-Blinken (bis das Fenster nach vorn geholt wird) + Meldungsfenster.
+        /// </summary>
+        private void ShowCompletion(string title, string text, bool problem)
+        {
+            try
+            {
+                if (problem) System.Media.SystemSounds.Exclamation.Play();
+                else System.Media.SystemSounds.Asterisk.Play();
+
+                if (Form.ActiveForm != this)
+                {
+                    var fi = new FLASHWINFO
+                    {
+                        cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(FLASHWINFO)),
+                        hwnd = Handle,
+                        dwFlags = 0x3 | 0xC, // FLASHW_ALL | FLASHW_TIMERNOFG: blinkt, bis das Fenster aktiv wird
+                        uCount = uint.MaxValue,
+                        dwTimeout = 0,
+                    };
+                    FlashWindowEx(ref fi);
+                }
+            }
+            catch
+            {
+                // Signal ist reiner Komfort - nie den Installationslauf deswegen scheitern lassen.
+            }
+
+            MessageBox.Show(this, text, title, MessageBoxButtons.OK,
+                problem ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
         }
 
         private async void BtnPreload_Click(object sender, EventArgs e)
@@ -1019,6 +1138,8 @@ namespace BasicInstaller
             _txtLog.Clear();
             _progressBar.Value = 0;
             var done = 0;
+            var cached = new List<string>();
+            var notCached = new List<string>();
 
             foreach (var row in selected)
             {
@@ -1027,6 +1148,7 @@ namespace BasicInstaller
                 if (string.IsNullOrWhiteSpace(url))
                 {
                     AppendLog($"{row.Name}: übersprungen, keine installer_url im Katalog (oder Version nicht ermittelbar).");
+                    notCached.Add(row.Name + " (keine URL / Version nicht ermittelbar)");
                 }
                 else
                 {
@@ -1034,10 +1156,12 @@ namespace BasicInstaller
                     {
                         await Downloader.DownloadAsync(url, row.Source.id, null, CancellationToken.None, row.Source.referer);
                         AppendLog($"{row.Name}: im Cache abgelegt ({Downloader.CacheDirectory}).");
+                        cached.Add(row.Name);
                     }
                     catch (Exception ex)
                     {
                         AppendLog($"{row.Name}: Download fehlgeschlagen - {ex.Message}");
+                        notCached.Add(row.Name + " (Download fehlgeschlagen)");
                     }
                 }
 
@@ -1047,6 +1171,10 @@ namespace BasicInstaller
 
             _lblStatus.Text = "Vorladen abgeschlossen - Installation kann jetzt auch offline erfolgen.";
             SetBusy(false);
+
+            var preloadText = $"{cached.Count} von {selected.Count} Programmen im Cache abgelegt." +
+                (notCached.Count > 0 ? "\r\n\r\nNicht heruntergeladen:\r\n - " + string.Join("\r\n - ", notCached) : "");
+            ShowCompletion("Vorladen abgeschlossen", preloadText, notCached.Count > 0);
         }
 
         private async Task<bool> InstallOneAsync(AppRow row)
@@ -1103,8 +1231,49 @@ namespace BasicInstaller
                 if (ReferenceEquals(gridRow.DataBoundItem, row))
                 {
                     gridRow.Cells[_colInstalled.Index].Value = row.InstalledVersion;
+                    ApplyRowStatusStyle(gridRow, row);
+                    _grid.InvalidateRow(gridRow.Index);
                     break;
                 }
+            }
+        }
+
+        private Font _boldGridFont;
+
+        /// <summary>
+        /// Faerbt die Zeile nach ihrem Zustand (Nutzerwunsch): installiert und aktuell = gruen,
+        /// installiert, aber veraltet (Update bekannt) = rot und fett, nicht installiert =
+        /// unveraendert. "Aktuell" heisst hier wie bei der Installieren-Regel: kein bekanntes
+        /// Update (ist die verfuegbare Version nicht ermittelbar, gilt die App als aktuell).
+        /// Gefaerbt werden Name, Installiert und Verfuegbar - nicht Pfad und Haken, damit
+        /// die Bedienelemente lesbar bleiben.
+        /// </summary>
+        private void ApplyRowStatusStyle(DataGridViewRow gridRow, AppRow row)
+        {
+            Color fore = Color.Empty, back = Color.Empty;
+            Font font = null;
+
+            if (row.InstalledVersion != "–")
+            {
+                if (row.HasKnownUpdate)
+                {
+                    fore = Theme.Danger;
+                    back = Theme.DangerLight;
+                    font = _boldGridFont ?? (_boldGridFont = new Font(_grid.Font, FontStyle.Bold));
+                }
+                else
+                {
+                    fore = Theme.Success;
+                    back = Theme.SuccessLight;
+                }
+            }
+
+            foreach (var col in new[] { _colName, _colInstalled, _colLatest })
+            {
+                var style = gridRow.Cells[col.Index].Style;
+                style.ForeColor = fore;
+                style.BackColor = back;
+                style.Font = font;
             }
         }
 

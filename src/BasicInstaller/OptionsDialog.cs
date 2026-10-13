@@ -51,7 +51,8 @@ namespace BasicInstaller
             Font = new Font("Segoe UI", 9f);
             AutoSize = true;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            MinimumSize = new Size(320, 160);
+            // Breit genug fuer lange Titel wie "Optionen – Microsoft 365 Apps (Office)" (war bei 320 abgeschnitten).
+            MinimumSize = new Size(420, 160);
             MaximumSize = new Size(700, 800); // Sicherheitsnetz: ab hier scrollen statt endlos wachsen
             AutoScroll = true;
             Padding = new Padding(0, 0, 0, 8);
