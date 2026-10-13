@@ -121,6 +121,10 @@ namespace BasicInstaller.Models
         public string shortcut_name { get; set; }
 
         public string detect_display_name_contains { get; set; }
+
+        // Fuer MSIX/AppX-Apps (z.B. "MSTeams"): Paketname, nach dem im AppX-Paketspeicher gesucht
+        // wird, wenn die klassische Uninstall-Registry nichts liefert (siehe InstalledAppDetector).
+        public string detect_appx_name { get; set; }
         public string sha256 { get; set; }
         public string default_language { get; set; }
         public Dictionary<string, LanguageVariant> languages { get; set; }

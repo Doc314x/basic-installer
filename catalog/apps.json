@@ -385,10 +385,11 @@
       "path_arg_template": null,
       "license_type": null,
       "detect_display_name_contains": null,
+      "detect_appx_name": "MSTeams",
       "sha256": null,
       "default_language": null,
       "languages": null,
-      "notes": "installer_url live getestet (12.10.2026, curl -IL): der offizielle Microsoft-Fwlink go.microsoft.com/fwlink/?linkid=2243204 leitet per 302 auf statics.teams.cdn.office.net/.../teamsbootstrapper.exe weiter (echte Datei, ~2 MB) - das ist der offiziell dokumentierte Weg fuer das \"neue Teams\" (MSIX-basiert, seit 2023; das alte MSI-basierte Teams hat Microsoft 2024 endgueltig abgeschaltet - ein darauf basierender Katalogeintrag waere nutzlos). -p provisioniert Teams maschinenweit und laedt das MSIX-Paket selbst online nach (kein separates MSIX-Dateiargument noetig). WICHTIG - echte strukturelle Einschraenkung, kein Platzhalter-Unwissen: detect_display_name_contains ist bewusst null, weil InstalledAppDetector nur die klassische Uninstall-Registry scannt - ein per -p provisioniertes MSIX-Paket landet dort NICHT (MSIX-Pakete werden ueber den Windows-AppX-Paketspeicher verwaltet, nicht die Uninstall-Registry). Installiert-Spalte zeigt fuer Teams deshalb immer \"-\", auch wenn es laeuft - das ist korrekt und kein Bug, solange InstalledAppDetector nicht um eine AppX/MSIX-Abfrage erweitert wird (z.B. via Get-AppxPackage-Aequivalent/PackageManager-API). default_install_path/path_arg_template bewusst null: MSIX-Pakete installieren an einen festen, nicht waehlbaren Ort. Kein Lizenzmechanismus (laeuft ueber Tenant-Anmeldung wie Office 365)."
+      "notes": "Neues Teams (MSIX). Offizieller Weg: go.microsoft.com/fwlink/?linkid=2243204 -> teamsbootstrapper.exe (live geprueft), -p provisioniert Teams maschinenweit und laedt das MSIX selbst nach. Die klassische Uninstall-Registry kennt MSIX nicht - die Erkennung laeuft deshalb ueber detect_appx_name (Paketname MSTeams, gelesen aus dem AppX-Paketspeicher in der Registry; Version z.B. 26260.1701.5139.3736). Praxistest 13.10.2026: auf dem Testrechner war Teams bereits Teil des Windows-Images (provisioniert, fuer den Benutzer installiert) und wurde bewusst NICHT entfernt - eine frische Installation und die Deinstallation (teamsbootstrapper.exe -x) sind daher nicht getestet. default_install_path/path_arg_template null: MSIX installiert an einen festen Ort. Kein Lizenzmechanismus (Anmeldung per Tenant)."
     },
     {
       "id": "shutup10",

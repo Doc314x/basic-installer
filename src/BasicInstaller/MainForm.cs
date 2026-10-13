@@ -987,7 +987,8 @@ namespace BasicInstaller
             foreach (var row in reportedOk)
             {
                 var src = row.Source;
-                if (string.IsNullOrWhiteSpace(src.detect_display_name_contains)) continue;
+                if (string.IsNullOrWhiteSpace(src.detect_display_name_contains)
+                    && string.IsNullOrWhiteSpace(src.detect_appx_name)) continue;
                 if (string.Equals(src.installer_type, "portable", StringComparison.OrdinalIgnoreCase)) continue;
                 if (row.InstalledVersion != "–") continue;
 

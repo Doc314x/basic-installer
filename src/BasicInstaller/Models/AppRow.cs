@@ -176,7 +176,9 @@ namespace BasicInstaller.Models
         /// </summary>
         public void RefreshInstalledVersion()
         {
-            InstalledVersion = InstalledAppDetector.FindInstalledVersion(Source.detect_display_name_contains) ?? "–";
+            InstalledVersion = InstalledAppDetector.FindInstalledVersion(Source.detect_display_name_contains)
+                ?? InstalledAppDetector.FindInstalledAppxVersion(Source.detect_appx_name)
+                ?? "–";
         }
     }
 }
