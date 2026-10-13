@@ -396,3 +396,23 @@ decoding its Cloudflare `data-cfemail` hex attribute — a standard, intentional
 anti-scraping scheme (XOR each byte pair against the first byte as key), not a security measure to work
 around. If this page's contact details ever need re-pulling, prefer fetching raw HTML and checking for
 `data-cfemail` over trusting an AI-summarized fetch's rendering of the email field.
+
+## Round four: live-test findings (13.10.2026)
+
+Kompiliert wird ausschliesslich auf GitHub Actions (`release.yml`, auch per `workflow_dispatch` auf jedem
+Branch). Test-Ablauf: Branch pushen -> `gh workflow run release.yml --ref <branch>` -> `gh run download`
+-> ZIP entpacken -> mit `__COMPAT_LAYER=RunAsInvoker` starten (umgeht den UAC-Prompt, damit sich die App
+ohne Admin-Klick testen laesst; System-Installationen schlagen dann natuerlich fehl) -> per
+UI-Automation (`System.Windows.Automation`, ValuePattern liefert Zellwerte) und Screenshot pruefen.
+
+- **`JavaScriptSerializer.DeserializeObject` liefert JSON-Arrays als `object[]`, NICHT `ArrayList`.**
+  `AutoUpdateService` pruefte `assets is ArrayList` -> immer false -> "Release hat kein .zip-Asset", das
+  Selbst-Update hat nie funktioniert. Jetzt `IEnumerable`. Der alte Kommentar behauptete das Gegenteil.
+- **`Cell.Value = ...` an gebundenen Spalten invalidiert die Zelle nicht zuverlaessig**: die Spalte
+  "Verfuegbar" zeigte "-", obwohl der Wert (per UIA verifiziert) "157.0.1" war. Nach dem Setzen
+  `_grid.Invalidate()` aufrufen.
+- **Leere Zahnrad-Zellen zeigten trotz `UseColumnTextForButtonValue=false` einen leeren Button-Rahmen**;
+  `Grid_CellPainting` zeichnet fuer Zeilen ohne Optionen/Lizenz nur den Hintergrund.
+- **`CheckBox` mit `AutoSize` + `MaximumSize` bricht Text nicht um, sondern schneidet ihn ab** - langen
+  Text in ein separates `Label` mit `MaximumSize` auslagern.
+- **Branch-Namen mit `/`** (z.B. `fix/...`) brachen ZIP-/Artifact-Namen im Workflow (`SAFE_REF`).
