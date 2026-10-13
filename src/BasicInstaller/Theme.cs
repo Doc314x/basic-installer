@@ -15,5 +15,11 @@ namespace BasicInstaller
         public static readonly Color AccentLight = Color.FromArgb(0xFF, 0xEE, 0xE0); // dezente Flächen (Zeilenauswahl)
         public static readonly Color OnAccent = Color.White;
         public static readonly Color PageBackground = Color.FromArgb(0xFA, 0xFA, 0xFA);
+
+        // Fuer Status-Badges ("X installiert" / "Y Updates verfuegbar") nach
+        // dem Vorbild von Patch My PC - Gruen/Orange sind hier Status-
+        // Semantik, kein Markenbezug wie der Accent-Ton.
+        public static readonly Color Success = Color.FromArgb(0x2E, 0x7D, 0x32);
+        public static readonly Color SuccessLight = Color.FromArgb(0xE8, 0xF5, 0xE9);
     }
 }

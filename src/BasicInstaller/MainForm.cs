@@ -46,6 +46,9 @@ namespace BasicInstaller
         private Button _btnDeleteProfile;
         private ComboBox _cmbGlobalLanguage;
         private Label _lblVersionStatus;
+        private Label _lblInstalledSummary;
+        private Label _lblUpdatesSummary;
+        private TextBox _txtSearch;
         private Button _btnInstall;
         private ProgressBar _progressBar;
         private Label _lblStatus;
@@ -112,6 +115,15 @@ namespace BasicInstaller
                 Margin = new Padding(0, 2, 0, 0),
             });
 
+            // Status-Badges nach Patch-My-PC-Vorbild: auf einen Blick sehen,
+            // wie viele Apps schon installiert sind und ob Updates anstehen.
+            var statusPills = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(0, 8, 0, 0) };
+            _lblInstalledSummary = MakeStatusPill();
+            _lblUpdatesSummary = MakeStatusPill();
+            statusPills.Controls.Add(_lblInstalledSummary);
+            statusPills.Controls.Add(_lblUpdatesSummary);
+            header.Controls.Add(statusPills);
+
             var toolbar = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
@@ -174,6 +186,13 @@ namespace BasicInstaller
                 ApplyGlobalLanguage((string)_cmbGlobalLanguage.SelectedItem);
             };
             profileBar.Controls.Add(_cmbGlobalLanguage);
+
+            // Suchfeld direkt ueber der Tabelle (wie bei Patch My PC) - filtert
+            // nach Name/Kategorie, blendet nicht passende Zeilen einfach aus.
+            profileBar.Controls.Add(new Label { Text = "🔍 Suchen:", AutoSize = true, Margin = new Padding(24, 6, 4, 0) });
+            _txtSearch = new TextBox { Width = 180 };
+            _txtSearch.TextChanged += (s, e) => ApplySearchFilter();
+            profileBar.Controls.Add(_txtSearch);
 
             BuildGrid();
 
@@ -441,6 +460,67 @@ namespace BasicInstaller
             return $"© {DateTime.Now.Year} AS Computertechnik  –  v{version.Major}.{version.Minor}.{version.Build}";
         }
 
+        private static Label MakeStatusPill() => new Label
+        {
+            AutoSize = true,
+            Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+            Padding = new Padding(10, 4, 10, 4),
+            Margin = new Padding(0, 0, 8, 0),
+        };
+
+        /// <summary>
+        /// Aktualisiert die beiden Status-Badges. "Installiert" ist immer
+        /// korrekt (Registry-Scan laeuft synchron beim Laden/Start-Button);
+        /// "Updates verfuegbar" ist nur aussagekraeftig, NACHDEM einmal
+        /// "Status aktualisieren" gelaufen ist (LatestVersion wird nicht
+        /// automatisch beim Start geprueft) - zeigt bis dahin einen neutralen
+        /// Hinweis statt "0 Updates" vorzutaeuschen.
+        /// </summary>
+        private void UpdateStatusPills()
+        {
+            if (_rows == null) return;
+
+            var installedCount = _rows.Count(r => r.InstalledVersion != "–");
+            _lblInstalledSummary.Text = $"✅ {installedCount}/{_rows.Count} installiert";
+            _lblInstalledSummary.BackColor = Theme.SuccessLight;
+            _lblInstalledSummary.ForeColor = Theme.Success;
+
+            var checkedCount = _rows.Count(r => r.LatestVersion != "–");
+            var updateCount = _rows.Count(r =>
+                r.InstalledVersion != "–" && r.LatestVersion != "–" && r.InstalledVersion != r.LatestVersion);
+
+            if (checkedCount == 0)
+            {
+                _lblUpdatesSummary.Text = "ℹ Updates noch nicht geprüft";
+                _lblUpdatesSummary.BackColor = SystemColors.Control;
+                _lblUpdatesSummary.ForeColor = Color.DimGray;
+            }
+            else if (updateCount > 0)
+            {
+                _lblUpdatesSummary.Text = $"⚠ {updateCount} Update{(updateCount == 1 ? "" : "s")} verfügbar";
+                _lblUpdatesSummary.BackColor = Theme.AccentLight;
+                _lblUpdatesSummary.ForeColor = Theme.AccentDark;
+            }
+            else
+            {
+                _lblUpdatesSummary.Text = "✅ Alles aktuell";
+                _lblUpdatesSummary.BackColor = Theme.SuccessLight;
+                _lblUpdatesSummary.ForeColor = Theme.Success;
+            }
+        }
+
+        private void ApplySearchFilter()
+        {
+            var term = _txtSearch.Text.Trim();
+            foreach (DataGridViewRow gridRow in _grid.Rows)
+            {
+                if (!(gridRow.DataBoundItem is AppRow row)) continue;
+                gridRow.Visible = string.IsNullOrEmpty(term)
+                    || row.Name.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0
+                    || row.Category.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0;
+            }
+        }
+
         private void ShowAboutDialog()
         {
             // Kontaktdaten absichtlich NICHT im Hauptfenster, sondern nur hier -
@@ -509,6 +589,7 @@ namespace BasicInstaller
                 ApplyUserConfig(standardProfile.Value);
 
             UpdateInstallButtonEnabled();
+            UpdateStatusPills();
         }
 
         private void SaveUserConfig() => ConfigStore.Save(BuildCurrentUserConfig());
@@ -579,6 +660,7 @@ namespace BasicInstaller
             _grid.DataSource = null;
             _grid.DataSource = _rows;
             UpdateInstallButtonEnabled();
+            UpdateStatusPills();
         }
 
         /// <summary>
@@ -753,13 +835,20 @@ namespace BasicInstaller
                 // Nutzerfrage ("ob aktuell oder ob Update moeglich").
                 var updateAvailable = row.InstalledVersion != "–" && row.LatestVersion != "–"
                     && row.InstalledVersion != row.LatestVersion;
-                gridRow.Cells[_colInstalled.Index].Style.ForeColor = updateAvailable ? Theme.AccentDark : Color.Empty;
-                gridRow.Cells[_colLatest.Index].Style.ForeColor = updateAvailable ? Theme.AccentDark : Color.Empty;
-                gridRow.Cells[_colLatest.Index].Style.Font = updateAvailable
-                    ? new Font(_grid.Font, FontStyle.Bold)
-                    : null;
+                var highlight = updateAvailable ? Theme.AccentDark : Color.Empty;
+                var boldFont = updateAvailable ? new Font(_grid.Font, FontStyle.Bold) : null;
+
+                // Name-Spalte mit einfaerben, nicht nur Installiert/Verfuegbar -
+                // nach Patch-My-PC-Vorbild sticht eine Zeile mit anstehendem
+                // Update schon beim Ueberfliegen der Namensliste ins Auge.
+                gridRow.Cells[_colName.Index].Style.ForeColor = highlight;
+                gridRow.Cells[_colName.Index].Style.Font = boldFont;
+                gridRow.Cells[_colInstalled.Index].Style.ForeColor = highlight;
+                gridRow.Cells[_colLatest.Index].Style.ForeColor = highlight;
+                gridRow.Cells[_colLatest.Index].Style.Font = boldFont;
             }
 
+            UpdateStatusPills();
             _lblStatus.Text = "Installationsstatus aktualisiert.";
         }
 
@@ -818,6 +907,7 @@ namespace BasicInstaller
             var ok = done - failed - skipped;
             _lblStatus.Text = $"Fertig: {ok} erfolgreich, {skipped} übersprungen, {failed} fehlgeschlagen.";
 
+            UpdateStatusPills();
             SaveUserConfig();
             SetBusy(false);
         }
