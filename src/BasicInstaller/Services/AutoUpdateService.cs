@@ -95,8 +95,8 @@ namespace BasicInstaller.Services
                 {
                     // Bewusst DeserializeObject statt Deserialize<Dictionary<string,object>>:
                     // JavaScriptSerializer liefert bei untypisierten Zielen verschachtelte
-                    // JSON-Arrays als ArrayList (nicht object[]) - das muss beim Lesen
-                    // beruecksichtigt werden, sonst liefert ein Cast immer null.
+                    // JSON-Arrays als object[] (live geprueft, NICHT ArrayList) - deshalb
+                    // unten gegen IEnumerable pruefen, sonst liefert der Cast immer null.
                     data = serializer.DeserializeObject(json) as Dictionary<string, object>;
                 }
                 catch (Exception ex)
@@ -119,7 +119,7 @@ namespace BasicInstaller.Services
                 }
 
                 string downloadUrl = null;
-                if (data.TryGetValue("assets", out var assetsObj) && assetsObj is ArrayList assets)
+                if (data.TryGetValue("assets", out var assetsObj) && assetsObj is System.Collections.IEnumerable assets)
                 {
                     foreach (var assetObj in assets)
                     {
