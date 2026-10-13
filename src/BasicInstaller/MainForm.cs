@@ -191,7 +191,7 @@ namespace BasicInstaller
             // nach Name/Kategorie, blendet nicht passende Zeilen einfach aus.
             profileBar.Controls.Add(new Label { Text = "🔍 Suchen:", AutoSize = true, Margin = new Padding(24, 6, 4, 0) });
             _txtSearch = new TextBox { Width = 180 };
-            _txtSearch.TextChanged += (s, e) => ApplySearchFilter();
+            _txtSearch.TextChanged += (s, e) => ApplySearchFilterSafe();
             profileBar.Controls.Add(_txtSearch);
 
             BuildGrid();
@@ -548,6 +548,28 @@ namespace BasicInstaller
                 gridRow.Visible = string.IsNullOrEmpty(term)
                     || row.Name.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0
                     || row.Category.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0;
+            }
+        }
+
+        private void ApplySearchFilterSafe()
+        {
+            // BUG (im Praxistest gefunden): In einer datengebundenen DataGridView wirft
+            // "Row.Visible = false" auf der AKTUELLEN Zeile eine InvalidOperationException ("Die mit der
+            // Position des Waehrungs-Managers verknuepfte Zeile kann nicht unsichtbar gemacht werden") -
+            // der Suchfilter stuerzte ab, sobald die gerade markierte Zeile nicht zum Suchtext passte,
+            // und Windows zeigte nur den allgemeinen Absturzdialog. Deshalb vorher die aktuelle Zelle
+            // loesen; als zweite Sicherung die Bindung kurz aussetzen.
+            try
+            {
+                _grid.CurrentCell = null;
+                ApplySearchFilter();
+            }
+            catch (InvalidOperationException)
+            {
+                var cm = BindingContext[_grid.DataSource] as CurrencyManager;
+                cm?.SuspendBinding();
+                try { ApplySearchFilter(); }
+                finally { cm?.ResumeBinding(); }
             }
         }
 
