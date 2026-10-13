@@ -136,8 +136,7 @@
       "installer_type": "exe",
       "silent_args": [
         "--silent",
-        "--accepteula",
-        "--enable-pua=1"
+        "--accepteula"
       ],
       "default_install_path": null,
       "path_arg_template": null,
@@ -155,8 +154,16 @@
           "extra_args": null
         }
       },
-      "notes": "ESET bietet keine anonyme Trial-Direct-URL wie Brave/VLC: installer_url muss aus dem ESET-/MSP-Account geladen werden (dort auch je Sprache getrennt verfuegbar). Genaue Schalter je Version vor Produktiveinsatz gegen die offizielle ESET-Silent-Install-Doku pruefen - hier nur als Platzhalter gepflegt. Korrektur: der Lizenzschluessel stand vorher als fest eingebackener Platzhalter ('--license-key=PLACEHOLDER-LICENSE-KEY') in silent_args und wurde nie durch den tatsaechlich eingegebenen Schluessel ersetzt - license_type war zudem gar nicht gesetzt, wodurch die Lizenz-Spalte in der GUI gesperrt blieb. Jetzt per license_type=cli_arg + license_key_arg_template korrekt angebunden (SilentInstaller.cs haengt den Schluessel nur an, wenn tatsaechlich einer eingegeben wurde; leeres Feld = Installation ohne --license-key, Produkt bleibt unaktiviert statt mit einem bedeutungslosen Platzhalter zu laufen). Policy-Vorgabe AS Computertechnik: Erkennung potenziell unerwuenschter Anwendungen (PUA) ist bewusst aktiviert (--enable-pua=1, in der ESET-Kommandozeilen-Doku so dokumentiert). Die Rueckmeldung an ESET (LiveGrid-Reputationssystem) soll dagegen deaktiviert sein - dafuer reicht laut ESET-Doku kein einfacher CLI-Switch wie bei --enable-pua, das laeuft ueber die erweiterte XML-Config (--cfg=...). Absichtlich NICHT geraten: kein --enable-livegrid=0 o.ae. eingetragen, weil das ein unverifizierter Flag-Name waere. Offener Punkt: vor Produktiveinsatz das korrekte --cfg=-XML-Setup fuer LiveGrid=aus ermitteln und hier ergaenzen.",
-      "detect_display_name_contains": "ESET NOD32"
+      "notes": "ESET bietet keine anonyme Trial-Direct-URL wie Brave/VLC: installer_url muss aus dem ESET-/MSP-Account geladen werden (dort auch je Sprache getrennt verfuegbar). Genaue Schalter je Version vor Produktiveinsatz gegen die offizielle ESET-Silent-Install-Doku pruefen. Lizenzschluessel per license_type=cli_arg + license_key_arg_template: leeres Feld = Installation ohne --license-key, Produkt bleibt unaktiviert statt mit einem Platzhalter zu laufen. PUA-Erkennung (potenziell unerwuenschte Anwendungen) ist jetzt eine echte Checkbox im Options-Popup (--enable-pua={pua}, in der ESET-Kommandozeilen-Doku dokumentiert) statt fest einprogrammiert - Vorauswahl aktiviert, wie besprochen. Die Rueckmeldung an ESET (LiveGrid-Reputationssystem) bewusst NICHT als Checkbox: dafuer reicht laut ESET-Doku kein einfacher CLI-Switch wie bei PUA, das laeuft ueber die erweiterte --cfg=-XML-Config, deren exaktes Element hier nicht verifiziert ist. Eine Checkbox ohne verifizierte Wirkung waere irrefuehrend - bleibt offener Punkt, vor Umsetzung das --cfg=-Schema gegen echte ESET-Doku/einen Test gegenpruefen.",
+      "detect_display_name_contains": "ESET NOD32",
+      "options": [
+        {
+          "key": "pua",
+          "label": "Erkennung potenziell unerwünschter Anwendungen (PUA) aktivieren",
+          "default_value": true,
+          "cli_arg_template": "--enable-pua={pua}"
+        }
+      ]
     },
     {
       "id": "winrar",

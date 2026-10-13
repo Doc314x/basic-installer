@@ -38,6 +38,15 @@ namespace BasicInstaller.Models
         public string[] choice_values { get; set; }
         public string[] choice_labels { get; set; }
         public string default_choice { get; set; }
+
+        // Optional: haengt diese Option direkt als zusaetzlichen Silent-Switch
+        // an (z.B. ESETs PUA-Erkennung: "--enable-pua={pua}"), statt nur in
+        // einer per options_ini_template generierten Datei zu landen. {key}
+        // wird durch "1"/"0" (bool) bzw. den gewaehlten Wert (choice) ersetzt -
+        // gleiche Werte wie AppRow.BuildOptionSubstitutions(). Beide Mechanismen
+        // (Datei UND CLI-Switch) sind pro Option unabhaengig nutzbar, auch
+        // gleichzeitig, falls eine App beides braucht.
+        public string cli_arg_template { get; set; }
     }
 
     /// <summary>

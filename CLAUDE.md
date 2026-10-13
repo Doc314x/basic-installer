@@ -99,6 +99,18 @@ here. The WinRAR catalog entry's `options_ini_template` section/key names are ex
 *mechanism* (drop a file next to the installer, then run `/S`) is confirmed correct, the exact keys are
 not. Check before relying on it in production, and update the `notes` once verified either way.
 
+**An `AppOption` can also carry `cli_arg_template`, independent of the file-based mechanism above.**
+Same `{key}` substitution, same merged `Dictionary<string,string>` from `BuildOptionSubstitutions()`, but
+`SilentInstaller.BuildArguments` appends the result directly as a command-line switch instead of writing
+it into a generated file — e.g. ESET's PUA-detection checkbox becomes `--enable-pua={pua}` → `--enable-pua=1`.
+Use this when the vendor's installer takes the setting as a plain CLI flag (verified, documented switch);
+use `options_ini_template`/`options_ini_filename` when it needs a companion config file instead (WinRAR,
+Office 365). Both can be set on the same `options` array if an app genuinely needs both. **Don't add an
+option with neither set "just to show a checkbox"** — ESET's LiveGrid toggle was deliberately left out of
+`options` entirely (not added with an empty/guessed `cli_arg_template`) because no verified mechanism for
+it exists yet; a checkbox with no real effect is worse than no checkbox, see its `notes` for what's still
+open there.
+
 **`InstalledAppDetector` scans both `HKLM` (native + `WOW6432Node`) and `HKCU`.** Several of these
 vendor installers (Firefox, Brave, sometimes VLC) can install either per-machine or per-user depending
 on how they're invoked — scanning only `HKLM` would silently miss a per-user install and report "nicht
@@ -221,10 +233,17 @@ clever one when you can't test it yourself.
   else about that column.
 - **The "skip already-installed" checkbox was removed entirely, not just unchecked by default** — user
   feedback was that toggling it made no real sense without also knowing whether the installed version is
-  *outdated* (which this project doesn't detect — see `InstalledAppDetector`, it only reports presence +
-  version string, never compares against a "latest" value). Skipping an already-detected install is now
-  unconditional in `BtnInstall_Click`. Don't resurrect this checkbox without also building real
-  version-comparison first — otherwise it's back to being a toggle with no good reason to ever use it.
+  *outdated*. At the time `InstalledAppDetector` only reported presence + version string, nothing to
+  compare against — skip was unconditional. **This has since changed**: `LatestVersionChecker` +
+  `AppRow.HasKnownUpdate` (true only when both `InstalledVersion` and `LatestVersion` are known *and*
+  differ) now exist, so `BtnInstall_Click`'s skip condition is `InstalledVersion != "–" &&
+  !HasKnownUpdate` — skip only when genuinely up to date or never checked, proceed (reinstall/update)
+  when an update is positively known. Still no manual checkbox to re-add — the behavior is now correct
+  by itself rather than needing a user toggle. Rows with `HasKnownUpdate` also auto-select themselves
+  after a version check (`RefreshAllInstalledVersionsAsync`, both the startup one and manual "Status
+  aktualisieren") — only ever ticks the checkbox on, never unticks a row the user selected for another
+  reason, so a deliberate manual selection (e.g. preparing a "Nur herunterladen" batch) is never
+  silently discarded.
 - **`Theme.cs`** holds the one accent color (`#FF914D`, extracted from `assets/as-ct-logo.png`'s only
   non-white pixels) used sparingly: the Installieren button, the DataGridView column headers (needs
   `EnableHeadersVisualStyles = false` or the OS header style silently wins over
@@ -321,8 +340,19 @@ would otherwise be preferred.
 
 ## Branding
 
-Icon (`assets/app.ico`, multi-resolution) and the "ℹ Über / Kontakt" popup's contact details were pulled
-from `https://as-ct.de` and its Impressum page. The AI-summarized fetch of that page initially rendered
+**`assets/app.ico` is a generic download-arrow glyph in the brand accent color, not a crop of the
+company logo.** First attempt used `assets/as-ct-logo.png` (the actual as-ct.de wordmark) padded into a
+square — looked unreadable at 16/32px (reported directly: "Das Icon sieht Kacke aus"). The logo itself is
+why: it's a thin vertical orange bar plus small, fine-detail text, designed as a wide website header
+image, not as an icon source — there's no "mark" in it dense/bold enough to survive downsampling to
+taskbar size. No better square mark was available, so `app.ico` was redrawn from scratch instead (PIL,
+see git history for the generation script): a rounded square filled with `Theme.Accent`, a bold white
+download-arrow-into-tray glyph — simple geometric shapes read fine even at 16px, unlike thin line art.
+`assets/as-ct-logo.png` itself is unused in the running app (no raw logo image is displayed anywhere,
+only `app.ico`) — kept in the repo only as the original source material.
+
+Icon and the "ℹ Über / Kontakt" popup's contact details were pulled from `https://as-ct.de` and its
+Impressum page. The AI-summarized fetch of that page initially rendered
 the email as a literal "[email&nbsp;protected]"-style placeholder — a JS-cloaking artifact, not a real
 value — and it was deliberately **not** guessed/fabricated at that point. The real address
 (`info@as-ct.de`) was later recovered legitimately by downloading the Impressum page's raw HTML and

@@ -25,11 +25,20 @@ namespace BasicInstaller.Models
 
         /// <summary>
         /// Best-effort "verfuegbare" Version (siehe LatestVersionChecker) -
-        /// "–" bis zum ersten "Status aktualisieren"-Klick bzw. wenn fuer
-        /// diese App nicht ermittelbar. Wird nicht beim Start automatisch
-        /// geprueft (Netzlast/Tempo), nur auf Nutzeraktion.
+        /// "–" bis zur ersten Pruefung (laeuft automatisch beim Programmstart,
+        /// zusaetzlich jederzeit per "Status aktualisieren") bzw. wenn fuer
+        /// diese App nicht ermittelbar.
         /// </summary>
         public string LatestVersion { get; set; } = "–";
+
+        /// <summary>
+        /// True nur, wenn BEIDE Versionen bekannt sind UND sie voneinander
+        /// abweichen - "–" (nicht installiert bzw. nicht geprueft) zaehlt
+        /// nicht als Update. Steuert sowohl die Auto-Auswahl nach einer
+        /// Versionspruefung als auch, ob die "bereits installiert"-Regel beim
+        /// Installieren trotzdem einen Lauf erzwingt statt zu überspringen.
+        /// </summary>
+        public bool HasKnownUpdate => InstalledVersion != "–" && LatestVersion != "–" && InstalledVersion != LatestVersion;
 
         public bool PathEditable => !string.IsNullOrWhiteSpace(Source.path_arg_template);
         public bool LanguageSelectable => Source.languages != null && Source.languages.Count > 0;

@@ -66,7 +66,7 @@ namespace BasicInstaller.Services
                 }
             }
 
-            var arguments = BuildArguments(app, installPathOverride, languageCode, licenseValue);
+            var arguments = BuildArguments(app, installPathOverride, languageCode, licenseValue, optionSubstitutions);
 
             // Eine rohe .msi laesst sich nicht direkt per Process.Start ausfuehren
             // (kein eigenstaendiges PE-Executable) - sie muss ueber msiexec.exe
@@ -229,7 +229,9 @@ namespace BasicInstaller.Services
             try { if (File.Exists(path)) File.Delete(path); } catch { /* bestenfalls - kein Grund den Lauf als fehlgeschlagen zu werten */ }
         }
 
-        private static string BuildArguments(AppEntry app, string installPathOverride, string languageCode, string licenseValue)
+        private static string BuildArguments(
+            AppEntry app, string installPathOverride, string languageCode, string licenseValue,
+            Dictionary<string, string> optionSubstitutions)
         {
             var parts = new StringBuilder();
 
@@ -246,6 +248,22 @@ namespace BasicInstaller.Services
 
             foreach (var arg in LanguageResolution.ResolveExtraArgs(app, languageCode))
                 AppendArg(arg);
+
+            // Optionen mit eigenem cli_arg_template haengen sich direkt als
+            // Silent-Switch an (z.B. ESETs PUA-Erkennung) - unabhaengig vom
+            // Datei-Mechanismus (options_ini_template), der separat weiter oben
+            // in Run() lief. {key} wird durch den in AppRow.
+            // BuildOptionSubstitutions() berechneten Wert ersetzt ("1"/"0" bei
+            // Checkboxen, der gewaehlte Wert bei "choice"-Optionen).
+            if (app.options != null && optionSubstitutions != null)
+            {
+                foreach (var option in app.options)
+                {
+                    if (string.IsNullOrWhiteSpace(option.cli_arg_template)) continue;
+                    if (!optionSubstitutions.TryGetValue(option.key, out var value)) continue;
+                    AppendArg(option.cli_arg_template.Replace("{" + option.key + "}", value));
+                }
+            }
 
             if (!string.IsNullOrWhiteSpace(installPathOverride) && !string.IsNullOrWhiteSpace(app.path_arg_template))
             {

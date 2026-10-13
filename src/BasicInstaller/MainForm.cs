@@ -333,7 +333,21 @@ namespace BasicInstaller
             Controls.Add(root);
 
             FormClosing += (s, e) => SaveUserConfig();
-            Shown += async (s, e) => await OfferUpdateIfAvailableAsync(interactive: false);
+            // Beide Pruefungen beim Start, nicht nacheinander (unabhaengige
+            // HttpClient-Aufrufe, kein gemeinsamer Zustand) - sonst wuerde die
+            // App-Versionspruefung die Katalog-Versionspruefung unnoetig
+            // verzoegern. Auf Nutzerwunsch: vorher lief die "Verfuegbar"-Pruefung
+            // nur manuell per "Status aktualisieren". Button waehrend der
+            // Start-Pruefung gesperrt, damit kein doppelter Lauf angestossen
+            // werden kann.
+            Shown += async (s, e) =>
+            {
+                _btnRefreshStatus.Enabled = false;
+                await Task.WhenAll(
+                    OfferUpdateIfAvailableAsync(interactive: false),
+                    RefreshAllInstalledVersionsAsync());
+                _btnRefreshStatus.Enabled = true;
+            };
         }
 
         private void BuildGrid()
@@ -830,13 +844,22 @@ namespace BasicInstaller
                 gridRow.Cells[_colInstalled.Index].Value = row.InstalledVersion;
                 gridRow.Cells[_colLatest.Index].Value = row.LatestVersion;
 
+                // Auf Nutzerwunsch: eine App mit erkanntem Update waehlt sich
+                // selbst aus, "Installieren" reicht dann direkt. Nur ANhaken,
+                // nie automatisch ABwaehlen - eine bewusste manuelle Auswahl
+                // (z.B. "Nur herunterladen" vorbereiten) soll dadurch nicht
+                // wieder verworfen werden.
+                if (row.HasKnownUpdate)
+                {
+                    row.Selected = true;
+                    gridRow.Cells[_colSelected.Index].Value = true;
+                }
+
                 // Dezente Hervorhebung, wenn beide Werte bekannt sind UND
                 // voneinander abweichen - genau das war die zweimal gestellte
                 // Nutzerfrage ("ob aktuell oder ob Update moeglich").
-                var updateAvailable = row.InstalledVersion != "–" && row.LatestVersion != "–"
-                    && row.InstalledVersion != row.LatestVersion;
-                var highlight = updateAvailable ? Theme.AccentDark : Color.Empty;
-                var boldFont = updateAvailable ? new Font(_grid.Font, FontStyle.Bold) : null;
+                var highlight = row.HasKnownUpdate ? Theme.AccentDark : Color.Empty;
+                var boldFont = row.HasKnownUpdate ? new Font(_grid.Font, FontStyle.Bold) : null;
 
                 // Name-Spalte mit einfaerben, nicht nur Installiert/Verfuegbar -
                 // nach Patch-My-PC-Vorbild sticht eine Zeile mit anstehendem
@@ -848,6 +871,7 @@ namespace BasicInstaller
                 gridRow.Cells[_colLatest.Index].Style.Font = boldFont;
             }
 
+            UpdateInstallButtonEnabled(); // falls die Auto-Auswahl oben den Installieren-Button gerade erst aktiviert hat
             UpdateStatusPills();
             _lblStatus.Text = "Installationsstatus aktualisiert.";
         }
@@ -873,13 +897,16 @@ namespace BasicInstaller
                 _lblStatus.Text = $"Bearbeite {row.Name} ({done + 1}/{selected.Count}) ...";
                 AppendLog($"=== {row.Name} ===");
 
-                if (row.InstalledVersion != "–")
+                if (row.InstalledVersion != "–" && !row.HasKnownUpdate)
                 {
                     // Fest, nicht mehr abwaehlbar (Nutzer-Feedback: ohne
-                    // Versionsvergleich zur "aktuellsten" Version bringt eine
-                    // Checkbox hier nur Verwirrung). Fuer eine erzwungene
-                    // Neuinstallation bleibt "Status aktualisieren" nach einer
-                    // manuellen Deinstallation der naheliegende Weg.
+                    // Versionsvergleich bringt eine Checkbox hier nur
+                    // Verwirrung) - ABER nur, wenn kein Update bekannt ist.
+                    // row.HasKnownUpdate kommt aus der (automatischen oder per
+                    // "Status aktualisieren" manuellen) Versionspruefung; ist
+                    // sie noch nie gelaufen, gilt die bisherige vorsichtige
+                    // Regel (installiert = ueberspringen), da wir "aktuell vs.
+                    // veraltet" dann schlicht nicht wissen.
                     AppendLog($"Übersprungen: bereits installiert (Version {row.InstalledVersion}).");
                     skipped++;
                 }

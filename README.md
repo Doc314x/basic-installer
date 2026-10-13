@@ -11,11 +11,13 @@ eigenes, schlankes Tool mit frei editierbarem Katalog statt eines gepflegten Fre
   Download-URL, Silent-Switches, optionaler Pfad-Override, optionale Sprachvarianten, optionale
   Installationsoptionen (Checkboxen) und optionale Lizenzierung. Neue Programme ergänzen heißt: JSON
   bearbeiten, kein Code ändern (siehe [„Katalog erweitern"](#katalog-erweitern) unten).
-- **Versionserkennung** – vor jeder Aktion wird geprüft, was laut Windows-Uninstall-Registry bereits
-  installiert ist. Per Default werden bereits installierte Programme beim Klick auf „Installieren"
-  übersprungen (Häkchen „Bereits installierte Programme überspringen" abwählen, um trotzdem zu
-  aktualisieren/neu zu installieren – die Hersteller-Silent-Installer sind dafür ausgelegt, über eine
-  bestehende Installation zu laufen).
+- **Versionserkennung** – was laut Windows-Uninstall-Registry bereits installiert ist, wird beim Start
+  automatisch geprüft, ebenso die online verfügbare Version (bei Firefox/Thunderbird/Zoom – nur dort lässt
+  sie sich aus dem Download-Link ermitteln, sonst „–"), zusätzlich jederzeit per „Status aktualisieren".
+  Erkennt die Prüfung ein Update, wählt sich die betroffene App **automatisch an** – „Installieren" reicht
+  dann direkt. Schon aktuelle oder noch nicht geprüfte Programme werden beim Installieren übersprungen,
+  ein bekanntes Update dagegen immer ausgeführt (die Hersteller-Silent-Installer sind dafür ausgelegt,
+  über eine bestehende Installation zu laufen).
 - **Profile** – die aktuelle Auswahl (welche Apps, welcher Pfad, welche Optionen, welche Sprache) lässt
   sich unter einem Namen speichern und später mit einem Klick wieder laden (z. B. „Kundenstandard" vs.
   „Technikerstandard"). Liegt unter `%APPDATA%\BasicInstaller\profiles.json`. Ein Profil namens
@@ -127,7 +129,7 @@ Code-/Workflow-Eingriff nötig.
 | `license_type` | `"cli_arg"` (Schlüssel als zusätzlicher Switch) \| `"key_file"` (Lizenzdatei wird nach der Installation ins Zielverzeichnis geschrieben) \| `null` |
 | `license_key_arg_template` | nur bei `cli_arg`, z. B. `"--license-key={key}"` |
 | `license_file_name` | nur bei `key_file`, z. B. `"rarreg.key"` |
-| `options` | Array von Installationsoptionen, optional. `type` fehlt/`"bool"`: Checkbox `{key, label, default_value}`. `type: "choice"`: Auswahl `{key, label, type:"choice", choice_values, choice_labels, default_choice}` (z. B. Architektur x86/x64 bei Office 365) |
+| `options` | Array von Installationsoptionen, optional. `type` fehlt/`"bool"`: Checkbox `{key, label, default_value}`. `type: "choice"`: Auswahl `{key, label, type:"choice", choice_values, choice_labels, default_choice}` (z. B. Architektur x86/x64 bei Office 365). Jede Option kann zusätzlich `cli_arg_template` tragen – hängt den Wert direkt als Silent-Switch an (z. B. ESETs `--enable-pua={pua}`), unabhängig vom `options_ini_template`-Datei-Mechanismus, auch kombinierbar |
 | `options_ini_template`, `options_ini_filename` | wenn gesetzt: INI-Inhalt (mit `{key}`-Platzhaltern, werden durch `1`/`0` ersetzt) wird vor dem Install neben den Installer gelegt |
 | `detect_display_name_contains` | Teilstring, der gegen `DisplayName` in der Windows-Uninstall-Registry gematcht wird, um die installierte Version zu finden |
 | `default_language`, `languages` | optionale Sprachvarianten: `languages` ist ein Dictionary `{sprachcode: {installer_url, extra_args}}`, das `installer_url`/`silent_args` der App überschreibt bzw. ergänzt |
