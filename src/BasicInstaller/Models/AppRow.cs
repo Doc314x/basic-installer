@@ -38,9 +38,42 @@ namespace BasicInstaller.Models
         /// Versionspruefung als auch, ob die "bereits installiert"-Regel beim
         /// Installieren trotzdem einen Lauf erzwingt statt zu überspringen.
         /// </summary>
-        public bool HasKnownUpdate => InstalledVersion != "–" && LatestVersion != "–"
-            && !SameVersion(InstalledVersion, LatestVersion)
-            && IsNewer(LatestVersion, InstalledVersion);
+        public bool HasKnownUpdate => !IsBlocked && InstalledVersion != "–" && LatestVersion != "–"
+            && !SameVersion(InstalledVersionComparable, LatestVersion)
+            && IsNewer(LatestVersion, InstalledVersionComparable);
+
+        /// <summary>
+        /// Gesetzt, wenn ein ANDERES Produkt derselben Familie installiert ist (z.B. Acrobat Pro statt
+        /// Reader) - dann wird nichts installiert oder darueberinstalliert (siehe AppEntry.blocked_name_contains).
+        /// </summary>
+        public string BlockedReason { get; private set; }
+        public bool IsBlocked => BlockedReason != null;
+
+        /// <summary>Anzeige der Spalte "Installiert": Version, "–" oder bei blockierten Apps ein Hinweis.</summary>
+        public string InstalledDisplay => IsBlocked ? "anderes Produkt" : InstalledVersion;
+
+        /// <summary>
+        /// Installierte Version in der Form, die sich mit der "verfuegbaren" vergleichen laesst.
+        /// Brave meldet in der Registry z.B. "155.1.97.56" (Chromium-Version + Brave-Version), die
+        /// Quelle nur "1.97.56" - installed_version_regex im Katalog schneidet den vergleichbaren
+        /// Teil heraus.
+        /// </summary>
+        public string InstalledVersionComparable
+        {
+            get
+            {
+                if (!string.IsNullOrWhiteSpace(Source.installed_version_regex) && InstalledVersion != null)
+                {
+                    try
+                    {
+                        var m = System.Text.RegularExpressions.Regex.Match(InstalledVersion, Source.installed_version_regex);
+                        if (m.Success && m.Groups.Count > 1 && m.Groups[1].Success) return m.Groups[1].Value;
+                    }
+                    catch (ArgumentException) { /* ungueltige Regex im Katalog: Rohwert verwenden */ }
+                }
+                return InstalledVersion;
+            }
+        }
 
         /// <summary>
         /// True, wenn "candidate" numerisch neuer ist als "current" (fehlende Stellen = 0).
@@ -176,9 +209,24 @@ namespace BasicInstaller.Models
         /// </summary>
         public void RefreshInstalledVersion()
         {
-            InstalledVersion = InstalledAppDetector.FindInstalledVersion(Source.detect_display_name_contains)
-                ?? InstalledAppDetector.FindInstalledAppxVersion(Source.detect_appx_name)
-                ?? "–";
+            var hasCodes = Source.detect_product_codes != null && Source.detect_product_codes.Length > 0;
+
+            // Mit Produktcodes wird NUR darueber erkannt (kein Rueckfall auf den Anzeigenamen): Acrobat
+            // Reader und Pro heissen beide "Adobe Acrobat (64-bit)" - der Name allein verwechselt sie.
+            var found = hasCodes
+                ? InstalledAppDetector.FindInstalledVersionByProductCode(Source.detect_product_codes)
+                : InstalledAppDetector.FindInstalledVersion(Source.detect_display_name_contains);
+            found = found ?? InstalledAppDetector.FindInstalledAppxVersion(Source.detect_appx_name);
+
+            BlockedReason = null;
+            if (found == null && !string.IsNullOrWhiteSpace(Source.blocked_name_contains))
+            {
+                var foreign = InstalledAppDetector.FindForeignProduct(Source.blocked_name_contains, Source.detect_product_codes);
+                if (foreign != null)
+                    BlockedReason = "Ein anderes Produkt ist installiert: " + foreign;
+            }
+
+            InstalledVersion = found ?? "–";
         }
     }
 }
