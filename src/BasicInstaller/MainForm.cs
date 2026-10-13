@@ -999,7 +999,7 @@ namespace BasicInstaller
                 {
                     try
                     {
-                        await Downloader.DownloadAsync(url, row.Source.id, null, CancellationToken.None);
+                        await Downloader.DownloadAsync(url, row.Source.id, null, CancellationToken.None, row.Source.referer);
                         AppendLog($"{row.Name}: im Cache abgelegt ({Downloader.CacheDirectory}).");
                     }
                     catch (Exception ex)
@@ -1038,7 +1038,7 @@ namespace BasicInstaller
                     lastReported = p;
                     AppendLog($"  ... {p}%");
                 });
-                installerPath = await Downloader.DownloadAsync(installerUrl, app.id, progress, CancellationToken.None);
+                installerPath = await Downloader.DownloadAsync(installerUrl, app.id, progress, CancellationToken.None, app.referer);
             }
             catch (Exception ex)
             {

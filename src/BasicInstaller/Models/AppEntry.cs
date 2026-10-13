@@ -66,6 +66,10 @@ namespace BasicInstaller.Models
         // version_url = Seite/Verzeichnisliste/Redirect-Quelle, version_regex = Regex mit
         // Gruppe 1 = Versionsnummer (bei mehreren Treffern gewinnt die hoechste).
         // fallback_version = Notnagel fuers Herunterladen, falls die Ermittlung scheitert.
+        // Optional: Referer-Header fuer den Download. Manche Hersteller-Server (IrfanView)
+        // liefern ohne passenden Referer nur eine HTML-"Click again"-Zwischenseite.
+        public string referer { get; set; }
+
         public string version_url { get; set; }
         public string version_regex { get; set; }
         public string fallback_version { get; set; }

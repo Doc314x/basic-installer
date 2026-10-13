@@ -87,7 +87,11 @@
       "name": "IrfanView",
       "category": "Multimedia",
       "homepage": "https://www.irfanview.com/",
-      "installer_url": null,
+      "installer_url": "https://www.irfanview.info/files/iview{version}g_x64_setup.exe",
+      "referer": "https://www.irfanview.info/",
+      "version_url": "https://www.irfanview.com/64bit.htm",
+      "version_regex": "iview(\\d+)g_x64_setup\\.exe",
+      "fallback_version": "476",
       "installer_type": "exe",
       "silent_args": [
         "/silent"
@@ -97,7 +101,7 @@
       "sha256": null,
       "default_language": null,
       "languages": null,
-      "notes": "IrfanView hat die Versionsnummer im Dateinamen (z.B. iview469_x64_setup.exe) und keine stabile 'latest'-URL -> installer_url muss bei jedem Update manuell gepflegt werden. UI-Sprache kommt per separatem Sprachplugin (irfanview_*_languages.zip), nicht ueber einen Silent-Switch -> hier nicht modelliert, GUI zeigt 'Standard'.",
+      "notes": "Direktlink https://www.irfanview.info/files/iview<NNN>g_x64_setup.exe (NNN = Version ohne Punkt, z.B. 476 = 4.76). Der Server liefert OHNE passenden Referer nur eine HTML-Seite 'Click again to start Download' - mit Referer https://www.irfanview.info/ kommt die echte EXE (live geprueft 13.10.2026: application/x-msdos-program, ~4,8 MB, auch ohne User-Agent). Das Katalogfeld referer setzt diesen Header im Downloader. Die aktuelle Versionsnummer wird zur Laufzeit von www.irfanview.com/64bit.htm gelesen (version_url/version_regex). UI-Sprache kommt per separatem Sprachplugin (irfanview_*_languages.zip), nicht per Silent-Switch - nicht modelliert, GUI zeigt 'Standard'. Silent-Switches /silent und /dir= nicht an einer echten Installation verifiziert.",
       "detect_display_name_contains": "IrfanView"
     },
     {
