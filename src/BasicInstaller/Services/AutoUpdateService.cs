@@ -210,11 +210,25 @@ namespace BasicInstaller.Services
             // "timeout" wartet, bis der aufrufende Prozess sicher beendet ist - siehe
             // Methodenkommentar. /E kopiert auch leere Unterordner mit, /IS /IT
             // ueberschreibt bereits vorhandene Dateien ohne Rueckfrage.
+            // BUG (im Praxistest reproduziert): installDirectory kommt von
+            // AppDomain.BaseDirectory und endet auf einen Backslash. In "robocopy src "C:\Pfad\""
+            // macht robocopy aus \" ein woertliches Anfuehrungszeichen und liest das Ziel falsch -
+            // das Update scheiterte lautlos (Ausgabe ging nach nul), die alte exe startete wieder
+            // und meldete dieselbe Version. Deshalb Trennzeichen am Ende entfernen.
+            var targetDir = installDirectory.TrimEnd('\\', '/');
+            var logPath = Path.Combine(Path.GetTempPath(), "BasicInstaller_update.log");
+
+            // /R:30 /W:1: eine noch gesperrte exe (Prozess beendet sich gerade) bis zu 30 s
+            // wiederholen statt sofort aufzugeben. Robocopy-Exit-Codes >= 8 sind Fehler.
+            // Das Ergebnis wird in %TEMP%\BasicInstaller_update.log festgehalten, damit ein
+            // Fehlschlag nicht mehr unsichtbar bleibt.
             var script =
                 "@echo off\r\n" +
                 "timeout /t 2 /nobreak >nul\r\n" +
-                $"robocopy \"{stagingDir}\" \"{installDirectory}\" /E /IS /IT >nul\r\n" +
-                $"start \"\" \"{Path.Combine(installDirectory, exeName)}\"\r\n" +
+                $"echo %date% %time% Update nach \"{targetDir}\" > \"{logPath}\"\r\n" +
+                $"robocopy \"{stagingDir}\" \"{targetDir}\" /E /IS /IT /R:30 /W:1 >> \"{logPath}\" 2>&1\r\n" +
+                $"echo robocopy-Exitcode %errorlevel% >> \"{logPath}\"\r\n" +
+                $"start \"\" \"{Path.Combine(targetDir, exeName)}\"\r\n" +
                 $"rmdir /s /q \"{stagingDir}\"\r\n" +
                 $"del \"{zipPath}\"\r\n" +
                 "del \"%~f0\"\r\n";
