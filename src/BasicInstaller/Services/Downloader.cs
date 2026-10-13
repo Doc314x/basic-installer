@@ -33,7 +33,8 @@ namespace BasicInstaller.Services
             string url,
             string appId,
             IProgress<int> progress,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            string referer = null)
         {
             Directory.CreateDirectory(CacheDirectory);
 
@@ -59,7 +60,7 @@ namespace BasicInstaller.Services
                 {
                     try
                     {
-                        await DownloadOnceAsync(url, destination, progress, cts.Token).ConfigureAwait(false);
+                        await DownloadOnceAsync(url, destination, progress, referer, cts.Token).ConfigureAwait(false);
                         return destination;
                     }
                     catch (Exception ex) when (!cts.IsCancellationRequested
@@ -75,14 +76,38 @@ namespace BasicInstaller.Services
         }
 
         private static async Task DownloadOnceAsync(
-            string url, string destination, IProgress<int> progress, CancellationToken token)
+            string url, string destination, IProgress<int> progress, string referer, CancellationToken token)
         {
             using (var client = new HttpClient())
+            {
+                if (!string.IsNullOrWhiteSpace(referer))
+                    client.DefaultRequestHeaders.Referrer = new Uri(referer);
+                await FetchToFileAsync(client, url, destination, progress, token).ConfigureAwait(false);
+            }
+        }
+
+        private static async Task FetchToFileAsync(
+            HttpClient client, string url, string destination, IProgress<int> progress, CancellationToken token)
+        {
             using (var response = await client
                 .GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token)
                 .ConfigureAwait(false))
             {
                 response.EnsureSuccessStatusCode();
+
+                // Eine HTML-Seite statt der Installer-Datei (Zwischen-/Fehlerseite, z.B. IrfanView ohne
+                // Referer) darf nicht still als "Installer" im Cache landen und spaeter fehlschlagen.
+                // InvalidDataException wird bewusst NICHT wiederholt (kein transienter Fehler).
+                var mediaType = response.Content.Headers.ContentType?.MediaType;
+                var ext = Path.GetExtension(destination);
+                if (string.Equals(mediaType, "text/html", StringComparison.OrdinalIgnoreCase)
+                    && (string.Equals(ext, ".exe", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(ext, ".msi", StringComparison.OrdinalIgnoreCase)))
+                {
+                    throw new InvalidDataException(
+                        "Der Server hat eine Webseite statt der Installer-Datei geliefert (ggf. Referer im Katalog setzen).");
+                }
+
                 var totalBytes = response.Content.Headers.ContentLength ?? -1L;
 
                 using (var contentStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
