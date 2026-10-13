@@ -517,8 +517,7 @@ namespace BasicInstaller
             _lblInstalledSummary.ForeColor = Theme.Success;
 
             var checkedCount = _rows.Count(r => r.LatestVersion != "–");
-            var updateCount = _rows.Count(r =>
-                r.InstalledVersion != "–" && r.LatestVersion != "–" && r.InstalledVersion != r.LatestVersion);
+            var updateCount = _rows.Count(r => r.HasKnownUpdate);
 
             if (checkedCount == 0)
             {
@@ -847,10 +846,21 @@ namespace BasicInstaller
 
             // Parallel statt sequenziell - bei 14 Katalog-Eintraegen waere ein
             // 8-Sekunden-Timeout pro App sonst im ungluecklichsten Fall >100s.
+            VersionResolver.ClearCache(); // "Status aktualisieren" soll wirklich neu nachsehen
             var checks = _rows.Select(async row =>
             {
-                var url = LanguageResolution.ResolveInstallerUrl(row.Source, row.SelectedLanguage);
-                row.LatestVersion = await LatestVersionChecker.TryGetLatestVersionAsync(url) ?? "–";
+                // Bevorzugt die im Katalog hinterlegte Versionsquelle (exakt, ohne Fallback -
+                // eine veraltete fallback_version waere hier eine falsche Anzeige); sonst die
+                // Versionsnummer aus der finalen Download-URL.
+                string latest = null;
+                if (VersionResolver.HasVersionSource(row.Source))
+                    latest = await VersionResolver.ResolveAsync(row.Source, allowFallback: false);
+                if (latest == null)
+                {
+                    var url = await LanguageResolution.ResolveInstallerUrlAsync(row.Source, row.SelectedLanguage);
+                    latest = await LatestVersionChecker.TryGetLatestVersionAsync(url);
+                }
+                row.LatestVersion = latest ?? "–";
             });
             await Task.WhenAll(checks);
 
@@ -980,10 +990,10 @@ namespace BasicInstaller
             foreach (var row in selected)
             {
                 _lblStatus.Text = $"Lade herunter {row.Name} ({done + 1}/{selected.Count}) ...";
-                var url = LanguageResolution.ResolveInstallerUrl(row.Source, row.SelectedLanguage);
+                var url = await LanguageResolution.ResolveInstallerUrlAsync(row.Source, row.SelectedLanguage);
                 if (string.IsNullOrWhiteSpace(url))
                 {
-                    AppendLog($"{row.Name}: übersprungen, keine installer_url im Katalog.");
+                    AppendLog($"{row.Name}: übersprungen, keine installer_url im Katalog (oder Version nicht ermittelbar).");
                 }
                 else
                 {
@@ -1009,11 +1019,11 @@ namespace BasicInstaller
         private async Task<bool> InstallOneAsync(AppRow row)
         {
             var app = row.Source;
-            var installerUrl = LanguageResolution.ResolveInstallerUrl(app, row.SelectedLanguage);
+            var installerUrl = await LanguageResolution.ResolveInstallerUrlAsync(app, row.SelectedLanguage);
 
             if (string.IsNullOrWhiteSpace(installerUrl))
             {
-                AppendLog("Übersprungen: keine installer_url im Katalog gepflegt (siehe Hinweis in catalog/apps.json).");
+                AppendLog("Übersprungen: keine installer_url im Katalog gepflegt bzw. Version nicht ermittelbar (siehe Hinweis in catalog/apps.json).");
                 return false;
             }
 

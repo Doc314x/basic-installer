@@ -38,7 +38,31 @@ namespace BasicInstaller.Models
         /// Versionspruefung als auch, ob die "bereits installiert"-Regel beim
         /// Installieren trotzdem einen Lauf erzwingt statt zu überspringen.
         /// </summary>
-        public bool HasKnownUpdate => InstalledVersion != "–" && LatestVersion != "–" && InstalledVersion != LatestVersion;
+        public bool HasKnownUpdate => InstalledVersion != "–" && LatestVersion != "–"
+            && !SameVersion(InstalledVersion, LatestVersion);
+
+        /// <summary>
+        /// Gleichheit zweier Versionsangaben trotz unterschiedlicher Schreibweise der
+        /// Quellen - sonst gaebe es dauerhaft ein falsches "Update verfuegbar":
+        /// WinRAR meldet in der Registry "7.23", die Download-Seite liefert "723";
+        /// 7-Zip "26.04" vs. Dateiname "2604"; LibreOffice "26.8.1.2" vs. "26.8.1"
+        /// (Praefix der Teile gilt als gleich).
+        /// </summary>
+        public static bool SameVersion(string a, string b)
+        {
+            a = (a ?? "").Trim().TrimStart('v', 'V');
+            b = (b ?? "").Trim().TrimStart('v', 'V');
+            if (a == b) return true;
+            if (a.Replace(".", "") == b.Replace(".", "")) return true;
+
+            var pa = a.Split('.');
+            var pb = b.Split('.');
+            var n = Math.Min(pa.Length, pb.Length);
+            if (n < 2) return false; // "3" als Praefix von "3.0.24" waere zu grosszuegig
+            for (var i = 0; i < n; i++)
+                if (pa[i] != pb[i]) return false;
+            return true;
+        }
 
         // Bei "portable"-Apps ist InstallPath kein Installations-, sondern ein
         // Kopierziel (siehe SilentInstaller.RunPortable) - deshalb auch ohne

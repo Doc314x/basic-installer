@@ -60,6 +60,16 @@ namespace BasicInstaller.Models
         public string category { get; set; }
         public string homepage { get; set; }
         public string installer_url { get; set; }
+
+        // Optionale automatische Versionsermittlung (siehe VersionResolver): installer_url
+        // (und languages[].installer_url) darf {version} bzw. {version_nodots} enthalten.
+        // version_url = Seite/Verzeichnisliste/Redirect-Quelle, version_regex = Regex mit
+        // Gruppe 1 = Versionsnummer (bei mehreren Treffern gewinnt die hoechste).
+        // fallback_version = Notnagel fuers Herunterladen, falls die Ermittlung scheitert.
+        public string version_url { get; set; }
+        public string version_regex { get; set; }
+        public string fallback_version { get; set; }
+
         public string installer_type { get; set; }
         public string[] silent_args { get; set; }
         public string default_install_path { get; set; }
