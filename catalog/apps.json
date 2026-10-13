@@ -417,7 +417,7 @@
       "name": "TeamViewer QuickSupport (AS-CT Fernwartung)",
       "category": "Fernwartung",
       "homepage": "https://as-ct.de/tv",
-      "installer_url": null,
+      "installer_url": "https://customdesignservice.teamviewer.com/download/windows/v15/63943id/TeamViewerQS.exe",
       "installer_type": "portable",
       "silent_args": null,
       "default_install_path": "%userprofile%\\..",
@@ -428,7 +428,7 @@
       "sha256": null,
       "default_language": null,
       "languages": null,
-      "notes": "installer_url ist bewusst null, kein Platzhalter-Unwissen sondern ein konkret live untersuchter Fall (13.10.2026): as-ct.de/tv leitet per HTML-Meta-Refresh (kein HTTP-Redirect) auf https://get.teamviewer.com/ascomputertechnik weiter - das ist TeamViewers eigene, markenangepasste QuickSupport-Kampagnenseite (zeigt beim Kunden das AS-CT-Logo waehrend der Sitzung). Diese Seite loest den eigentlichen Download-Link erst per JavaScript auf (dynamisch nachgeladenes /get/res/scripts/connect.js) - kein statischer href im HTML, mit curl/HttpClient (kein JS) nicht automatisiert ermittelbar. Probiert: HEAD wird von Cloudflare generell geblockt (404), GET liefert nur die HTML-Huelle ohne Download-Link. Zur Einordnung GEGENGEPRUEFT, aber NICHT eingetragen: die generische (unmarkierte) TeamViewer-QuickSupport-URL https://download.teamviewer.com/download/TeamViewerQS.exe funktioniert nachweislich (live getestet, echte 34-MB-exe) - waere aber OHNE das AS-CT-Branding/die Kampagnen-Zuordnung, die der Zweck dieses Eintrags ist. Um den echten markenangepassten Link zu bekommen: as-ct.de/tv in einem normalen Browser oeffnen, die Ziel-URL aus dem Download (z.B. Downloads-Ordner-Historie oder Browser-Netzwerk-Tab) entnehmen und hier eintragen - danach funktioniert der Eintrag ohne weitere Code-Aenderung. default_install_path ist woertlich wie gewuenscht \"%userprofile%\\..\" (= C:\\Users) - ueber die normale \"Installationspfad\"-Spalte in der Haupttabelle jederzeit aenderbar, kein Code-Edit noetig (siehe AppRow.PathEditable: bei installer_type=\"portable\" ist diese Spalte immer editierbar, auch ohne path_arg_template). shortcut_name legt nach dem Kopieren eine Desktop-Verknuepfung mit exakt diesem Namen an (ShortcutCreator, spaet gebundenes WScript.Shell-COM-Objekt) - ebenfalls direkt im Katalog aenderbar."
+      "notes": "Markenangepasstes AS-CT-QuickSupport (zeigt beim Kunden das AS-CT-Logo). as-ct.de/tv leitet per Meta-Refresh auf get.teamviewer.com/ascomputertechnik; diese Seite hat die ConfigId 63943id und holt per JS-POST an /api/CustomDesign die echte Download-URL. Die URL customdesignservice.teamviewer.com/download/windows/v15/<ConfigId>/TeamViewerQS.exe funktioniert direkt OHNE Signatur (live geprueft 13.10.2026: 200, ~33 MB; die Datei enthaelt die ConfigId eingebettet und unterscheidet sich vom generischen download.teamviewer.com-Installer). Aendert TeamViewer die ConfigId oder das URL-Schema: get.teamviewer.com/ascomputertechnik mit Windows-User-Agent abrufen, im Inline-Script var configId lesen bzw. POST /api/CustomDesign (JSON: ConfigId, Version 15, IsCustomModule true, Subdomain 1, ConnectionId leer; Browser-User-Agent + Session-Cookie noetig, sonst 404) nachstellen. default_install_path ist woertlich \"%userprofile%\\\\..\" (= C:\\\\Users) - ueber die Pfad-Spalte aenderbar. shortcut_name legt nach dem Kopieren eine Desktop-Verknuepfung mit exakt diesem Namen an (ShortcutCreator)."
     }
   ]
 }

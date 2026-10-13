@@ -334,17 +334,7 @@ library registered on whatever machine builds the project (the GitHub Actions Wi
 case), while late binding only needs the `Microsoft.CSharp` in-box assembly (referenced in the csproj for
 exactly this). Keep it late-bound if you touch this file.
 
-**`teamviewer_qs_asct`'s `installer_url` is `null` on purpose, not an unresearched gap** — see its
-`notes` for the full chain: `as-ct.de/tv`'s redirect to TeamViewer's branded QuickSupport campaign page is
-an HTML meta-refresh (not an HTTP redirect `Downloader`'s `HttpClient` would follow), and that page's
-real download link is assembled by JavaScript at runtime, not present as a static `href` — confirmed
-live, not assumed. A generic, unbranded QuickSupport URL
-(`download.teamviewer.com/download/TeamViewerQS.exe`) was verified working but deliberately **not**
-substituted in, because the whole point of this catalog entry is AS Computertechnik's branded campaign
-link (shows the company logo to the customer during a support session) — silently swapping in the
-generic one would defeat that without saying so. If a real-browser tool (the built-in browser skill, not
-available in this session) becomes available later, resolving the actual branded download URL that way
-instead of leaving this gap would be the right follow-up.
+**	eamviewer_qs_asct uses TeamViewer's custom-module download, not the generic one.** s-ct.de/tv -> get.teamviewer.com/ascomputertechnik (ConfigId `63943id`) -> https://customdesignservice.teamviewer.com/download/windows/v15/63943id/TeamViewerQS.exe, which works directly without a signature (the exe embeds the ConfigId; verified different from the generic installer). Earlier sessions wrongly concluded the link was unobtainable: the campaign page serves its JS only to a Windows user agent, and POST /api/CustomDesign needs a browser UA plus the session cookie from the page request. Full recipe in the catalog entry's `notes`.
 
 ## Configuration / Data Files
 
