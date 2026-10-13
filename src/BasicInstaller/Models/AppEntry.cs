@@ -75,6 +75,12 @@ namespace BasicInstaller.Models
         public string fallback_version { get; set; }
 
         public string installer_type { get; set; }
+
+        // Optional: Zeitlimit fuer den Installer in Minuten (Standard: 10, siehe SilentInstaller).
+        // Noetig fuer Installer, die ihr Produkt erst beim Start herunterladen - Microsoft 365
+        // (ODT, ~4,6 GB) brauchte auf einem langsamen Rechner deutlich laenger als 10 Minuten.
+        public int install_timeout_minutes { get; set; }
+
         public string[] silent_args { get; set; }
         public string default_install_path { get; set; }
         public string path_arg_template { get; set; }
