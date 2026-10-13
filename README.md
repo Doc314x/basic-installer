@@ -123,8 +123,9 @@ Code-/Workflow-Eingriff nötig.
 | `id` | eindeutiger Schlüssel, u. a. für Cache-Dateinamen und Registry-Erkennung |
 | `name`, `category`, `homepage` | Anzeige in der Tabelle |
 | `installer_url` | Download-Link; `null` wenn keine stabile URL existiert (siehe `notes`) |
-| `installer_type` | `"exe"` (Standard) \| `"msi"` (läuft über einen `msiexec`-Wrapper) \| `"portable"` (kein Install – die Datei wird unverändert nach Downloads kopiert, z. B. O&O ShutUp10++) |
+| `installer_type` | `"exe"` (Standard) \| `"msi"` (läuft über einen `msiexec`-Wrapper) \| `"portable"` (kein Install – die Datei wird unverändert kopiert, Ziel = `default_install_path`/Installationspfad-Spalte, ohne beides Downloads; optional `shortcut_name` legt danach eine Desktop-Verknüpfung an – z. B. O&O ShutUp10++, TeamViewer QuickSupport) |
 | `silent_args` | Array von Kommandozeilen-Switches für den Silent-Install (bei `"portable"` ungenutzt) |
+| `shortcut_name` | Nur bei `"portable"`: Name (ohne `.lnk`) einer Desktop-Verknüpfung, die nach dem Kopieren automatisch angelegt wird. `null` = keine Verknüpfung |
 | `default_install_path`, `path_arg_template` | Pfad-Override; `{path}` wird ersetzt. `null` = vom Installer nicht unterstützt |
 | `license_type` | `"cli_arg"` (Schlüssel als zusätzlicher Switch) \| `"key_file"` (Lizenzdatei wird nach der Installation ins Zielverzeichnis geschrieben) \| `null` |
 | `license_key_arg_template` | nur bei `cli_arg`, z. B. `"--license-key={key}"` |

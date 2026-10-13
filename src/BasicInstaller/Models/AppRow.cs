@@ -40,7 +40,12 @@ namespace BasicInstaller.Models
         /// </summary>
         public bool HasKnownUpdate => InstalledVersion != "–" && LatestVersion != "–" && InstalledVersion != LatestVersion;
 
-        public bool PathEditable => !string.IsNullOrWhiteSpace(Source.path_arg_template);
+        // Bei "portable"-Apps ist InstallPath kein Installations-, sondern ein
+        // Kopierziel (siehe SilentInstaller.RunPortable) - deshalb auch ohne
+        // path_arg_template editierbar, nicht nur wenn der Installer einen
+        // Pfad-Switch unterstuetzt.
+        public bool PathEditable => !string.IsNullOrWhiteSpace(Source.path_arg_template)
+            || Source.installer_type == "portable";
         public bool LanguageSelectable => Source.languages != null && Source.languages.Count > 0;
 
         // Zwei unabhaengige Lizenzmechanismen (siehe AppEntry) - fuer die GUI
@@ -70,9 +75,16 @@ namespace BasicInstaller.Models
         public AppRow(AppEntry source)
         {
             Source = source;
-            InstallPath = string.IsNullOrWhiteSpace(source.default_install_path)
-                ? ""
-                : Environment.ExpandEnvironmentVariables(source.default_install_path);
+            if (!string.IsNullOrWhiteSpace(source.default_install_path))
+                InstallPath = Environment.ExpandEnvironmentVariables(source.default_install_path);
+            else if (source.installer_type == "portable")
+                // Portable Apps ohne explizit gesetzten Zielordner landen in
+                // Downloads (z.B. ShutUp10) - hier schon im Konstruktor
+                // aufgeloest, damit die Tabelle direkt den echten Pfad zeigt
+                // statt eines leeren Felds.
+                InstallPath = KnownFolders.GetDownloadsFolder();
+            else
+                InstallPath = "";
             SelectedLanguage = LanguageResolution.DefaultLanguage(source);
             LicenseKey = "";
             InstalledVersion = InstalledAppDetector.FindInstalledVersion(source.detect_display_name_contains) ?? "–";

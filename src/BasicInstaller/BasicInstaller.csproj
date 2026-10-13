@@ -34,6 +34,9 @@
     <!-- fuer ZipFile.ExtractToDirectory (AutoUpdateService) -->
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />
+    <!-- fuer "dynamic" (ShortcutCreator - spaet gebundenes COM, kein fester
+         Interop-Referenzverweis noetig) -->
+    <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
 
   <ItemGroup>

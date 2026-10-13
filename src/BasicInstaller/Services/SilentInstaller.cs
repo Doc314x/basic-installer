@@ -45,13 +45,17 @@ namespace BasicInstaller.Services
             Dictionary<string, string> optionSubstitutions)
         {
             // "portable" ist kein Installer im eigentlichen Sinn (z.B. O&O
-            // ShutUp10++): nichts wird silent ausgefuehrt, die heruntergeladene
-            // Datei wird nur an einen festen Zielort kopiert (aktuell immer
-            // Downloads, auf Nutzerwunsch) und ist danach direkt startklar.
-            // Komplett eigener, fruehzeitiger Codepfad statt die Process.Start-
-            // Logik mit einem weiteren Sonderfall zu verkomplizieren.
+            // ShutUp10++, TeamViewer QuickSupport): nichts wird silent
+            // ausgefuehrt, die heruntergeladene Datei wird nur an einen
+            // Zielort kopiert (installPathOverride > default_install_path >
+            // Downloads als Fallback - alle drei ueber die normale
+            // "Installationspfad"-Spalte steuerbar, siehe AppRow.PathEditable)
+            // und ist danach direkt startklar. Optional zusaetzlich eine
+            // Desktop-Verknuepfung (app.shortcut_name). Komplett eigener,
+            // fruehzeitiger Codepfad statt die Process.Start-Logik mit einem
+            // weiteren Sonderfall zu verkomplizieren.
             if (string.Equals(app.installer_type, "portable", StringComparison.OrdinalIgnoreCase))
-                return RunPortable(app, installerPath);
+                return RunPortable(app, installerPath, installPathOverride);
 
             string optionsIniPath = null;
             if (!string.IsNullOrWhiteSpace(app.options_ini_template) && !string.IsNullOrWhiteSpace(app.options_ini_filename))
@@ -171,23 +175,46 @@ namespace BasicInstaller.Services
             return result;
         }
 
-        private static InstallResult RunPortable(AppEntry app, string installerPath)
+        private static InstallResult RunPortable(AppEntry app, string installerPath, string installPathOverride)
         {
             try
             {
-                var downloadsDir = KnownFolders.GetDownloadsFolder();
-                Directory.CreateDirectory(downloadsDir); // existiert praktisch immer, aber kein Grund darauf zu vertrauen
-                var destination = Path.Combine(downloadsDir, Path.GetFileName(installerPath));
+                // Rangfolge: explizite Nutzerangabe in der Pfad-Spalte (koennte
+                // z.B. "%userprofile%\.." enthalten) > Katalog-Default >
+                // Downloads als letzter Fallback (bisheriges ShutUp10-Verhalten).
+                var destinationDir = !string.IsNullOrWhiteSpace(installPathOverride)
+                    ? Environment.ExpandEnvironmentVariables(installPathOverride)
+                    : !string.IsNullOrWhiteSpace(app.default_install_path)
+                        ? Environment.ExpandEnvironmentVariables(app.default_install_path)
+                        : KnownFolders.GetDownloadsFolder();
+
+                Directory.CreateDirectory(destinationDir); // existiert praktisch immer, aber kein Grund darauf zu vertrauen
+                var destination = Path.Combine(destinationDir, Path.GetFileName(installerPath));
                 File.Copy(installerPath, destination, overwrite: true);
-                return new InstallResult
+
+                var message = $"Portable Anwendung abgelegt unter: {destination}";
+
+                if (!string.IsNullOrWhiteSpace(app.shortcut_name))
                 {
-                    Outcome = InstallOutcome.Success,
-                    Message = $"Portable Anwendung abgelegt unter: {destination}"
-                };
+                    try
+                    {
+                        ShortcutCreator.CreateDesktopShortcut(app.shortcut_name, destination);
+                        message += $" | Desktop-Verknüpfung „{app.shortcut_name}“ angelegt.";
+                    }
+                    catch (Exception ex)
+                    {
+                        // Datei liegt bereits da und ist nutzbar - nur die
+                        // Verknuepfung fehlt. Gleiches "nicht den Erfolg
+                        // verschlucken"-Prinzip wie beim Lizenzdatei-Schreiben.
+                        message += $" | Verknüpfung konnte nicht angelegt werden: {ex.Message}";
+                    }
+                }
+
+                return new InstallResult { Outcome = InstallOutcome.Success, Message = message };
             }
             catch (Exception ex)
             {
-                return new InstallResult { Outcome = InstallOutcome.LaunchFailed, Message = "Konnte nicht nach Downloads kopiert werden: " + ex.Message };
+                return new InstallResult { Outcome = InstallOutcome.LaunchFailed, Message = "Konnte nicht kopiert werden: " + ex.Message };
             }
         }
 

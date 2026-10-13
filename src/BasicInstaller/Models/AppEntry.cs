@@ -88,6 +88,18 @@ namespace BasicInstaller.Models
         public string options_ini_template { get; set; }
         public string options_ini_filename { get; set; }
 
+        // Nur fuer installer_type=="portable": Name der Desktop-Verknuepfung
+        // (ohne ".lnk"), die nach dem Kopieren auf den Zielort angelegt wird.
+        // null/leer = keine Verknuepfung. Der Zielordner selbst ist KEIN
+        // eigenes Feld - er nutzt default_install_path/AppRow.InstallPath
+        // (gleiches Feld, gleiche Spalte "Installationspfad" wie bei
+        // "echten" Installern), fuer portable Apps aber als Kopierziel statt
+        // als Installationsverzeichnis interpretiert. So ist der Zielordner
+        // ohne neues UI-Element direkt in der Haupttabelle aenderbar - exakt
+        // der "in den App-Settings aenderbar"-Wunsch, der zu dieser Spalte
+        // gefuehrt hat (siehe teamviewer_qs_asct-Eintrag).
+        public string shortcut_name { get; set; }
+
         public string detect_display_name_contains { get; set; }
         public string sha256 { get; set; }
         public string default_language { get; set; }

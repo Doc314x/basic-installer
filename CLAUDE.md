@@ -310,6 +310,42 @@ clever one when you can't test it yourself.
   file-properties metadata. **Don't add a manual "remember to bump the version in the csproj" step back
   in — keep deriving it from the tag in CI.**
 
+## "portable" apps: destination folder reuses the normal path column, not a new field
+
+`installer_type: "portable"` apps (O&O ShutUp10++, TeamViewer QuickSupport) don't install anything —
+`SilentInstaller.RunPortable` just copies the downloaded file to a destination folder and optionally
+(`AppEntry.shortcut_name` set) creates a desktop `.lnk` pointing at it. The destination folder
+deliberately reuses `AppRow.InstallPath`/`AppEntry.default_install_path` — the same field and the same
+"Installationspfad" grid column every other app uses for its install directory — rather than inventing a
+separate field, specifically so a technician can change where a portable app lands directly in the main
+table, no separate settings UI needed. `AppRow.PathEditable` is `true` for any `portable` app even
+without `path_arg_template` (which is an install-time-CLI-arg concept that doesn't apply here) — don't
+gate that column on `path_arg_template` alone or portable apps lose their only way to redirect the
+target. Resolution order in `RunPortable`: explicit `InstallPath` override → `default_install_path` →
+`KnownFolders.GetDownloadsFolder()` as the final fallback (this is why ShutUp10, which sets neither, still
+lands in Downloads — same behavior as before this mechanism generalized). `KnownFolders.cs` wraps
+`SHGetKnownFolderPath` via P/Invoke rather than hardcoding `%USERPROFILE%\Downloads`, because
+`Environment.SpecialFolder` has no Downloads value at all (it predates Vista's Known Folder system) and a
+hardcoded guess breaks for anyone who relocated their Downloads folder.
+
+`ShortcutCreator.cs` creates the `.lnk` via late-bound COM (`Type.GetTypeFromProgID("WScript.Shell")` +
+`dynamic`), not a `IWshRuntimeLibrary` COM reference — a fixed interop reference would need that type
+library registered on whatever machine builds the project (the GitHub Actions Windows runner, in this
+case), while late binding only needs the `Microsoft.CSharp` in-box assembly (referenced in the csproj for
+exactly this). Keep it late-bound if you touch this file.
+
+**`teamviewer_qs_asct`'s `installer_url` is `null` on purpose, not an unresearched gap** — see its
+`notes` for the full chain: `as-ct.de/tv`'s redirect to TeamViewer's branded QuickSupport campaign page is
+an HTML meta-refresh (not an HTTP redirect `Downloader`'s `HttpClient` would follow), and that page's
+real download link is assembled by JavaScript at runtime, not present as a static `href` — confirmed
+live, not assumed. A generic, unbranded QuickSupport URL
+(`download.teamviewer.com/download/TeamViewerQS.exe`) was verified working but deliberately **not**
+substituted in, because the whole point of this catalog entry is AS Computertechnik's branded campaign
+link (shows the company logo to the customer during a support session) — silently swapping in the
+generic one would defeat that without saying so. If a real-browser tool (the built-in browser skill, not
+available in this session) becomes available later, resolving the actual branded download URL that way
+instead of leaving this gap would be the right follow-up.
+
 ## Configuration / Data Files
 
 All under `%APPDATA%\BasicInstaller\`:
