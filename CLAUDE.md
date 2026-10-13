@@ -440,3 +440,30 @@ ungueltig") - then call the app's own code headless via reflection (`CatalogLoad
   `text/html` response for `.exe`/`.msi` targets instead of caching an HTML file. No User-Agent is sent on
   purpose (`get.videolan.org` returns an HTML page for browser UAs). Downloads retry 3x (flaky VLC mirrors).
 - **TeamViewer custom QuickSupport** and the other items above are described in their catalog `notes`.
+
+## Round six: safety, row colors, running programs (13.10.2026)
+
+- **Acrobat Reader vs. Pro share the DisplayName "Adobe Acrobat (64-bit)"** (verified via the winget manifests
+  `Adobe.Acrobat.Reader.64-bit` / `Adobe.Acrobat.Pro`). Detecting by name made Pro look like Reader, and a
+  Reader install over Pro would have been offered. Only the product code differs: Reader
+  `{AC76BA86-1033-FF00-7760-BC15014EA700}`, Pro `{AC76BA86-1033-FFFF-7760-BC15014EA700}`. Catalog fields
+  `detect_product_codes` (exact key, `*` suffix = prefix) and `blocked_name_contains` (another product of the
+  family is installed -> row is "blocked": orange, cannot be ticked, skipped by Alle auswaehlen and Installieren,
+  summary line "nicht installiert"). Never go back to name-only detection for products that share a name.
+- **Whole row is colored** (`ApplyRowStatusStyle` styles every cell): green = installed and up to date, red+bold =
+  installed and outdated, orange = blocked, plain = not installed. Paths of non-editable rows keep the grey hint
+  cell only when no status color applies.
+- **`AppRow.InstalledDisplay`** (not `InstalledVersion`) is what the grid shows ("anderes Produkt" for blocked rows);
+  `InstalledVersion` stays the pure version/"–" because the install logic compares against "–".
+- **`installed_version_regex`**: Brave's registry version is `155.1.97.56` (Chromium + Brave), the GitHub tag is
+  `v1.97.56`. The regex isolates the comparable part. Version sources added for Brave (github releases/latest) and
+  Office (`clients.config.office.net/releases/v1.0/OfficeReleases`, channel MonthlyEnterprise to match the
+  configuration.xml). No stable machine-readable source for Teams, ESET, ShutUp10, TeamViewer QS: "Verfuegbar"
+  stays "–" there (Teams/ESET self-update, the others are portable and have no installed version).
+- **Running programs before an update** (`process_names`, `EnsureNotRunningAsync`): asks Ja (close) / Nein (skip) /
+  Abbrechen (abort the run). Close = `CloseMainWindow`, wait up to 10 s, then `Kill`. Only asked for updates of an
+  already-installed app. Rows never reached after an abort show "nicht bearbeitet" in the summary.
+- **Button renamed** "Basic Installer selbst aktualisieren" -> "Auf Updates pruefen" (user request); tooltips
+  separate it from "Status aktualisieren" (re-reads installed/available versions of the catalog programs).
+- **UI test tricks**: fake Uninstall registry keys + a renamed `ping -t` as `7zFM.exe` reproduce "outdated",
+  "blocked" and "program running" without installing anything; remove them afterwards.
