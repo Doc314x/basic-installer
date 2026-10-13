@@ -986,13 +986,16 @@ namespace BasicInstaller
                 return false;
             }
 
-            AppendLog("Installiere (silent) ...");
+            var isPortable = string.Equals(app.installer_type, "portable", StringComparison.OrdinalIgnoreCase);
+            AppendLog(isPortable ? "Lege portable Anwendung ab ..." : "Installiere (silent) ...");
             var result = await Task.Run(() =>
                 SilentInstaller.Run(app, installerPath, row.InstallPath, row.SelectedLanguage, row.LicenseKey, row.BuildOptionSubstitutions()));
 
             if (result.Outcome == InstallOutcome.Success)
             {
-                AppendLog("OK.");
+                // Bei portablen Apps steckt in result.Message der Zielpfad -
+                // genau die Info, die hier sonst verschluckt wuerde.
+                AppendLog(string.IsNullOrWhiteSpace(result.Message) ? "OK." : result.Message);
                 return true;
             }
 

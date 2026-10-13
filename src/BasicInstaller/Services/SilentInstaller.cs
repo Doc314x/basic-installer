@@ -44,6 +44,15 @@ namespace BasicInstaller.Services
             string licenseValue,
             Dictionary<string, string> optionSubstitutions)
         {
+            // "portable" ist kein Installer im eigentlichen Sinn (z.B. O&O
+            // ShutUp10++): nichts wird silent ausgefuehrt, die heruntergeladene
+            // Datei wird nur an einen festen Zielort kopiert (aktuell immer
+            // Downloads, auf Nutzerwunsch) und ist danach direkt startklar.
+            // Komplett eigener, fruehzeitiger Codepfad statt die Process.Start-
+            // Logik mit einem weiteren Sonderfall zu verkomplizieren.
+            if (string.Equals(app.installer_type, "portable", StringComparison.OrdinalIgnoreCase))
+                return RunPortable(app, installerPath);
+
             string optionsIniPath = null;
             if (!string.IsNullOrWhiteSpace(app.options_ini_template) && !string.IsNullOrWhiteSpace(app.options_ini_filename))
             {
@@ -160,6 +169,26 @@ namespace BasicInstaller.Services
             }
 
             return result;
+        }
+
+        private static InstallResult RunPortable(AppEntry app, string installerPath)
+        {
+            try
+            {
+                var downloadsDir = KnownFolders.GetDownloadsFolder();
+                Directory.CreateDirectory(downloadsDir); // existiert praktisch immer, aber kein Grund darauf zu vertrauen
+                var destination = Path.Combine(downloadsDir, Path.GetFileName(installerPath));
+                File.Copy(installerPath, destination, overwrite: true);
+                return new InstallResult
+                {
+                    Outcome = InstallOutcome.Success,
+                    Message = $"Portable Anwendung abgelegt unter: {destination}"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new InstallResult { Outcome = InstallOutcome.LaunchFailed, Message = "Konnte nicht nach Downloads kopiert werden: " + ex.Message };
+            }
         }
 
         private static string WriteOptionsIni(AppEntry app, string installerPath, Dictionary<string, string> substitutions)

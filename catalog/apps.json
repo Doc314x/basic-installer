@@ -367,6 +367,23 @@
       "default_language": null,
       "languages": null,
       "notes": "installer_url live getestet (12.10.2026, curl -IL): der offizielle Microsoft-Fwlink go.microsoft.com/fwlink/?linkid=2243204 leitet per 302 auf statics.teams.cdn.office.net/.../teamsbootstrapper.exe weiter (echte Datei, ~2 MB) - das ist der offiziell dokumentierte Weg fuer das \"neue Teams\" (MSIX-basiert, seit 2023; das alte MSI-basierte Teams hat Microsoft 2024 endgueltig abgeschaltet - ein darauf basierender Katalogeintrag waere nutzlos). -p provisioniert Teams maschinenweit und laedt das MSIX-Paket selbst online nach (kein separates MSIX-Dateiargument noetig). WICHTIG - echte strukturelle Einschraenkung, kein Platzhalter-Unwissen: detect_display_name_contains ist bewusst null, weil InstalledAppDetector nur die klassische Uninstall-Registry scannt - ein per -p provisioniertes MSIX-Paket landet dort NICHT (MSIX-Pakete werden ueber den Windows-AppX-Paketspeicher verwaltet, nicht die Uninstall-Registry). Installiert-Spalte zeigt fuer Teams deshalb immer \"-\", auch wenn es laeuft - das ist korrekt und kein Bug, solange InstalledAppDetector nicht um eine AppX/MSIX-Abfrage erweitert wird (z.B. via Get-AppxPackage-Aequivalent/PackageManager-API). default_install_path/path_arg_template bewusst null: MSIX-Pakete installieren an einen festen, nicht waehlbaren Ort. Kein Lizenzmechanismus (laeuft ueber Tenant-Anmeldung wie Office 365)."
+    },
+    {
+      "id": "shutup10",
+      "name": "O&O ShutUp10++ (portable)",
+      "category": "Datenschutz",
+      "homepage": "https://www.oo-software.com/de/shutup10",
+      "installer_url": "https://dl5.oo-software.com/files/ooshutup10/OOSU10.exe",
+      "installer_type": "portable",
+      "silent_args": null,
+      "default_install_path": null,
+      "path_arg_template": null,
+      "license_type": null,
+      "detect_display_name_contains": null,
+      "sha256": null,
+      "default_language": null,
+      "languages": null,
+      "notes": "installer_url live getestet (13.10.2026, curl -IL): 200 OK, ~82 MB - passt zur offiziell dokumentierten Groesse von Version 3.6.1135 (buendelt x86/x64/ARM64 in einer Datei, daher die ungewoehnliche Groesse fuer ein so kleines Tool, keine falsche/vertauschte URL). installer_type=\"portable\" ist ein NEUER, eigener Mechanismus (siehe SilentInstaller.RunPortable): es wird NICHTS silent ausgefuehrt - die heruntergeladene Datei wird einfach unveraendert nach Downloads kopiert (per SHGetKnownFolderPath ermittelt, nicht hartcodiert, falls der Downloads-Ordner verlegt wurde) und ist von dort aus direkt startklar, exakt wie beim manuellen Download ueber den Browser. detect_display_name_contains ist bewusst null: ShutUp10 ist portable, registriert nichts in der Uninstall-Registry - die \"Installiert\"-Spalte zeigt dafuer immer \"-\", das ist korrekt und kein Bug. \"Bereits installiert ueberspringen\" greift bei portablen Apps folgerichtig nie - jeder Install-Lauf laedt die aktuelle Version neu nach Downloads, was fuer ein On-Demand-Tool wie dieses auch das gewuenschte Verhalten ist (kein veralteter Datenschutz-Snapshot)."
     }
   ]
 }
