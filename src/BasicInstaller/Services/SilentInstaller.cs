@@ -98,6 +98,12 @@ namespace BasicInstaller.Services
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden,
+                // Wichtig fuer Installer mit relativen Dateiargumenten: Office' ODT-setup.exe wird
+                // mit "/configure configuration.xml" gestartet, die Datei liegt neben dem
+                // Installer. Ohne WorkingDirectory fand ODT sie nicht (Log: FinalizeConfigFilePath
+                // Unexpected -> Fehlerdialog) und wartete unsichtbar bis zum Timeout - die Office-
+                // Installation hat deshalb nie funktioniert (Praxistest 13.10.2026).
+                WorkingDirectory = Path.GetDirectoryName(installerPath) ?? Environment.CurrentDirectory,
             };
 
             InstallResult result;
@@ -255,7 +261,23 @@ namespace BasicInstaller.Services
 
         private static void TryKill(Process process)
         {
-            try { process.Kill(); } catch { /* bereits beendet - egal */ }
+            // Den ganzen Prozessbaum beenden (taskkill /T): ein Installer-Bootstrapper startet oft
+            // Kindprozesse, und bei Office blieb der Prozess nach Process.Kill() sichtbar weiter
+            // am Leben (Praxistest). Process.Kill() bleibt als Rueckfallebene.
+            try
+            {
+                var tk = Process.Start(new ProcessStartInfo
+                {
+                    FileName = "taskkill.exe",
+                    Arguments = $"/F /T /PID {process.Id}",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                });
+                tk?.WaitForExit(15000);
+            }
+            catch { /* Rueckfall unten */ }
+
+            try { if (!process.HasExited) process.Kill(); } catch { /* bereits beendet - egal */ }
         }
 
         private static void TryDelete(string path)
