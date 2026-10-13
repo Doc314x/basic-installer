@@ -135,10 +135,13 @@ namespace BasicInstaller
             _btnSelectNone = new Button { Text = "Keine auswählen", AutoSize = true };
             _btnRefreshStatus = new Button { Text = "🔄 Status aktualisieren", AutoSize = true, Margin = new Padding(16, 0, 0, 0) };
             _btnPreload = new Button { Text = "⬇ Nur herunterladen (Cache)", AutoSize = true, Margin = new Padding(8, 0, 0, 0) };
-            // Bewusst klar von den Katalog-Apps abgegrenzt benannt - "App-Updates"
-            // war mehrfach missverstanden worden als "Updates der installierten
-            // Programme" statt "Update von Basic Installer selbst".
-            _btnCheckUpdate = new Button { Text = "🔄 Basic Installer selbst aktualisieren", AutoSize = true, Margin = new Padding(24, 0, 0, 0) };
+            // Nutzerwunsch: kurz "Auf Updates prüfen" (vorher "Basic Installer selbst aktualisieren",
+            // das war schwer verstaendlich). Die Abgrenzung zu "Status aktualisieren" (Katalog-
+            // Programme) leisten die Tooltips unten.
+            _btnCheckUpdate = new Button { Text = "🔄 Auf Updates prüfen", AutoSize = true, Margin = new Padding(24, 0, 0, 0) };
+            var buttonTips = new ToolTip();
+            buttonTips.SetToolTip(_btnCheckUpdate, "Prüft, ob es eine neuere Version von Basic Installer selbst gibt, und bietet das Update an.");
+            buttonTips.SetToolTip(_btnRefreshStatus, "Liest neu ein, welche Programme installiert sind und welche Versionen verfügbar sind. Ändert nichts.");
             _btnSelectAll.Click += (s, e) => SetAllSelected(true);
             _btnSelectNone.Click += (s, e) => SetAllSelected(false);
             _btnRefreshStatus.Click += async (s, e) =>
@@ -412,7 +415,7 @@ namespace BasicInstaller
             };
             _colInstalled = new DataGridViewTextBoxColumn
             {
-                DataPropertyName = "InstalledVersion",
+                DataPropertyName = "InstalledDisplay",
                 HeaderText = "Installiert",
                 ReadOnly = true,
                 AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
@@ -465,6 +468,7 @@ namespace BasicInstaller
                     _grid.CommitEdit(DataGridViewDataErrorContexts.Commit);
             };
             _grid.CellValueChanged += Grid_CellValueChanged;
+            _grid.CellBeginEdit += Grid_CellBeginEdit;
             _grid.CellClick += Grid_CellClick;
             _grid.CellPainting += Grid_CellPainting;
         }
@@ -828,6 +832,20 @@ namespace BasicInstaller
                 UpdateInstallButtonEnabled();
         }
 
+        /// <summary>
+        /// Eine blockierte Zeile (anderes Produkt derselben Familie installiert, z.B. Acrobat Pro statt
+        /// Reader) laesst sich nicht anhaken - die Begruendung steht in der Statuszeile.
+        /// </summary>
+        private void Grid_CellBeginEdit(object sender, DataGridViewCellCancelEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex != _colSelected.Index) return;
+            if (_grid.Rows[e.RowIndex].DataBoundItem is AppRow row && row.IsBlocked)
+            {
+                e.Cancel = true;
+                _lblStatus.Text = $"{row.Name} kann nicht ausgewählt werden. {row.BlockedReason}";
+            }
+        }
+
         private void Grid_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
@@ -856,6 +874,7 @@ namespace BasicInstaller
             foreach (DataGridViewRow gridRow in _grid.Rows)
             {
                 if (value && !gridRow.Visible) continue;
+                if (value && gridRow.DataBoundItem is AppRow blocked && blocked.IsBlocked) continue; // nie blockierte Apps anhaken
                 gridRow.Cells[_colSelected.Index].Value = value;
             }
             UpdateInstallButtonEnabled();
@@ -876,8 +895,15 @@ namespace BasicInstaller
             foreach (DataGridViewRow gridRow in _grid.Rows)
             {
                 if (!(gridRow.DataBoundItem is AppRow r0)) continue;
-                gridRow.Cells[_colInstalled.Index].Value = r0.InstalledVersion;
+                gridRow.Cells[_colInstalled.Index].Value = r0.InstalledDisplay;
                 ApplyRowStatusStyle(gridRow, r0);
+                // Eine aus der gespeicherten Konfiguration stammende Auswahl darf keine blockierte App
+                // (anderes Produkt installiert) enthalten.
+                if (r0.IsBlocked && r0.Selected)
+                {
+                    r0.Selected = false;
+                    gridRow.Cells[_colSelected.Index].Value = false;
+                }
             }
             _grid.Invalidate();
 
@@ -907,7 +933,7 @@ namespace BasicInstaller
             {
                 if (!(gridRow.DataBoundItem is AppRow row)) continue;
 
-                gridRow.Cells[_colInstalled.Index].Value = row.InstalledVersion;
+                gridRow.Cells[_colInstalled.Index].Value = row.InstalledDisplay;
                 gridRow.Cells[_colLatest.Index].Value = row.LatestVersion;
 
                 // Auf Nutzerwunsch: eine App mit erkanntem Update waehlt sich
@@ -952,6 +978,7 @@ namespace BasicInstaller
             var skipped = 0;
             var reportedOk = new List<AppRow>(); // Installer meldete Erfolg - wird unten gegen die Registry gegengeprueft
             var skippedRows = new List<AppRow>();
+            var skipNote = new Dictionary<AppRow, string>(); // eigener Text fuer die Zusammenfassung (blockiert, laeuft noch, ...)
             var failedRows = new List<AppRow>();
 
             // Laufzeit in der Statuszeile: lange Installer (Microsoft 365 laedt mehrere GB, VLC baut
@@ -966,14 +993,27 @@ namespace BasicInstaller
             };
             ticker.Start();
 
+            var handled = new HashSet<AppRow>();
+
             foreach (var row in selected)
             {
+                handled.Add(row);
                 currentLabel = $"Bearbeite {row.Name} ({done + 1}/{selected.Count})";
                 rowClock.Restart();
                 _lblStatus.Text = currentLabel + " ...";
                 AppendLog($"=== {row.Name} ===");
 
-                if (row.InstalledVersion != "–" && !row.HasKnownUpdate)
+                if (row.IsBlocked)
+                {
+                    // Anderes Produkt derselben Familie installiert (z.B. Acrobat Pro): NICHT
+                    // installieren oder ueberinstallieren - eine Reader-Installation ueber Pro waere
+                    // ein Fehler mit Folgen.
+                    AppendLog("Übersprungen (blockiert): " + row.BlockedReason);
+                    skipped++;
+                    skippedRows.Add(row);
+                    skipNote[row] = "⛔ nicht installiert - " + row.BlockedReason;
+                }
+                else if (row.InstalledVersion != "–" && !row.HasKnownUpdate)
                 {
                     // Fest, nicht mehr abwaehlbar (Nutzer-Feedback: ohne
                     // Versionsvergleich bringt eine Checkbox hier nur
@@ -989,6 +1029,31 @@ namespace BasicInstaller
                 }
                 else
                 {
+                    // Update einer bereits installierten App: laeuft sie noch, vorher nachfragen.
+                    if (row.InstalledVersion != "–")
+                    {
+                        var decision = await EnsureNotRunningAsync(row);
+                        if (decision == RunningDecision.AbortAll)
+                        {
+                            AppendLog("Lauf vom Benutzer abgebrochen (Programm lief noch).");
+                            skipped++;
+                            skippedRows.Add(row);
+                            skipNote[row] = "↷ abgebrochen (Programm läuft noch)";
+                            done++;
+                            break;
+                        }
+                        if (decision == RunningDecision.Skip)
+                        {
+                            AppendLog("Übersprungen: Programm läuft noch und wurde nicht geschlossen.");
+                            skipped++;
+                            skippedRows.Add(row);
+                            skipNote[row] = "↷ übersprungen (Programm läuft noch)";
+                            done++;
+                            _progressBar.Value = Math.Min(100, (int)(done * 100.0 / selected.Count));
+                            continue;
+                        }
+                    }
+
                     try
                     {
                         if (await InstallOneAsync(row))
@@ -1038,7 +1103,8 @@ namespace BasicInstaller
             {
                 var src = row.Source;
                 if (string.IsNullOrWhiteSpace(src.detect_display_name_contains)
-                    && string.IsNullOrWhiteSpace(src.detect_appx_name)) continue;
+                    && string.IsNullOrWhiteSpace(src.detect_appx_name)
+                    && (src.detect_product_codes == null || src.detect_product_codes.Length == 0)) continue;
                 if (string.Equals(src.installer_type, "portable", StringComparison.OrdinalIgnoreCase)) continue;
                 if (row.InstalledVersion != "–") continue;
 
@@ -1062,9 +1128,12 @@ namespace BasicInstaller
             foreach (var r in selected)
             {
                 string mark;
-                if (failedRows.Contains(r)) mark = "✖ fehlgeschlagen";
+                if (!handled.Contains(r)) mark = "↷ nicht bearbeitet (Lauf abgebrochen)";
+                else if (failedRows.Contains(r)) mark = "✖ fehlgeschlagen";
                 else if (unverifiedRows.Contains(r)) mark = "⚠ installiert gemeldet, aber nicht erkannt";
-                else if (skippedRows.Contains(r)) mark = "↷ übersprungen (bereits aktuell, Version " + r.InstalledVersion + ")";
+                else if (skippedRows.Contains(r)) mark = skipNote.TryGetValue(r, out var note)
+                    ? note
+                    : "↷ übersprungen (bereits aktuell, Version " + r.InstalledVersion + ")";
                 else mark = "✔ erfolgreich" + (r.InstalledVersion != "–" ? " (Version " + r.InstalledVersion + ")" : "");
                 report.AppendLine($"{r.Name}: {mark}");
             }
@@ -1073,6 +1142,64 @@ namespace BasicInstaller
                 problem ? "Installation mit Problemen beendet" : "Installation abgeschlossen",
                 report.ToString().TrimEnd() + (problem ? "\r\n\r\nDetails stehen im Log unten im Fenster." : ""),
                 problem);
+        }
+
+        // ---------------------------------------------------------------
+        // Laufende Anwendungen vor einem Update
+        // ---------------------------------------------------------------
+
+        private enum RunningDecision { Proceed, Skip, AbortAll }
+
+        /// <summary>
+        /// Laeuft die zu aktualisierende Anwendung noch (Katalogfeld process_names), wird vorher gefragt:
+        /// schliessen und fortfahren, diese App ueberspringen oder den ganzen Lauf abbrechen. Ein
+        /// Installer, der Dateien einer laufenden Anwendung ersetzen soll, schlaegt sonst fehl oder
+        /// verlangt einen Neustart. Schliessen: erst freundlich (CloseMainWindow), nach 10 s hart.
+        /// </summary>
+        private async Task<RunningDecision> EnsureNotRunningAsync(AppRow row)
+        {
+            var names = row.Source.process_names;
+            if (names == null || names.Length == 0) return RunningDecision.Proceed;
+
+            List<System.Diagnostics.Process> Running() => names
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .SelectMany(n => System.Diagnostics.Process.GetProcessesByName(n))
+                .ToList();
+
+            var running = Running();
+            if (running.Count == 0) return RunningDecision.Proceed;
+
+            var shown = string.Join(", ", running.Select(p => p.ProcessName).Distinct());
+            var answer = MessageBox.Show(this,
+                $"{row.Name} läuft noch ({shown}) und muss für das Update geschlossen werden.\n\n" +
+                "Ja = jetzt schließen und aktualisieren (nicht gespeicherte Daten gehen verloren)\n" +
+                "Nein = dieses Programm überspringen\n" +
+                "Abbrechen = gesamten Lauf beenden",
+                "Programm läuft noch", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Warning);
+            if (answer == DialogResult.Cancel) return RunningDecision.AbortAll;
+            if (answer == DialogResult.No) return RunningDecision.Skip;
+
+            AppendLog($"Schließe {row.Name} ({shown}) ...");
+            foreach (var p in running)
+            {
+                try { p.CloseMainWindow(); } catch { /* Prozess schon weg oder ohne Fenster */ }
+            }
+
+            for (var i = 0; i < 20 && Running().Count > 0; i++)
+                await Task.Delay(500);
+
+            foreach (var p in Running())
+            {
+                try { p.Kill(); } catch { /* beendet sich gerade */ }
+            }
+            await Task.Delay(1500);
+
+            if (Running().Count > 0)
+            {
+                AppendLog($"{row.Name} lässt sich nicht beenden.");
+                return RunningDecision.Skip;
+            }
+            return RunningDecision.Proceed;
         }
 
         // ---------------------------------------------------------------
@@ -1230,7 +1357,7 @@ namespace BasicInstaller
             {
                 if (ReferenceEquals(gridRow.DataBoundItem, row))
                 {
-                    gridRow.Cells[_colInstalled.Index].Value = row.InstalledVersion;
+                    gridRow.Cells[_colInstalled.Index].Value = row.InstalledDisplay;
                     ApplyRowStatusStyle(gridRow, row);
                     _grid.InvalidateRow(gridRow.Index);
                     break;
@@ -1243,17 +1370,22 @@ namespace BasicInstaller
         /// <summary>
         /// Faerbt die Zeile nach ihrem Zustand (Nutzerwunsch): installiert und aktuell = gruen,
         /// installiert, aber veraltet (Update bekannt) = rot und fett, nicht installiert =
-        /// unveraendert. "Aktuell" heisst hier wie bei der Installieren-Regel: kein bekanntes
-        /// Update (ist die verfuegbare Version nicht ermittelbar, gilt die App als aktuell).
-        /// Gefaerbt werden Name, Installiert und Verfuegbar - nicht Pfad und Haken, damit
-        /// die Bedienelemente lesbar bleiben.
+        /// unveraendert, blockiert (anderes Produkt installiert) = orange. "Aktuell" heisst hier wie
+        /// bei der Installieren-Regel: kein bekanntes Update (ist die verfuegbare Version nicht
+        /// ermittelbar, gilt die App als aktuell). Gefaerbt wird die GANZE Zeile (Nutzerwunsch),
+        /// auch Haken, Pfad und Zahnrad-Spalte.
         /// </summary>
         private void ApplyRowStatusStyle(DataGridViewRow gridRow, AppRow row)
         {
             Color fore = Color.Empty, back = Color.Empty;
             Font font = null;
 
-            if (row.InstalledVersion != "–")
+            if (row.IsBlocked)
+            {
+                fore = Theme.AccentDark;
+                back = Theme.AccentLight;
+            }
+            else if (row.InstalledVersion != "–")
             {
                 if (row.HasKnownUpdate)
                 {
@@ -1268,11 +1400,17 @@ namespace BasicInstaller
                 }
             }
 
-            foreach (var col in new[] { _colName, _colInstalled, _colLatest })
+            foreach (DataGridViewColumn col in _grid.Columns)
             {
+                var b = back;
+                // Ohne Statusfarbe bleibt es bei dem grauen Hinweisfeld fuer nicht aenderbare Zellen
+                // (siehe Grid_DataBindingComplete).
+                if (b.IsEmpty && col == _colPath && !row.PathEditable) b = SystemColors.Control;
+                if (b.IsEmpty && col == _colOptions && !row.HasOptions && !row.LicenseKeyEditable) b = SystemColors.Control;
+
                 var style = gridRow.Cells[col.Index].Style;
                 style.ForeColor = fore;
-                style.BackColor = back;
+                style.BackColor = b;
                 style.Font = font;
             }
         }

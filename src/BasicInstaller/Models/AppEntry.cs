@@ -122,6 +122,27 @@ namespace BasicInstaller.Models
 
         public string detect_display_name_contains { get; set; }
 
+        // Exakte Erkennung ueber den Schluesselnamen des Uninstall-Eintrags (Produktcode, z.B.
+        // "{AC76BA86-1033-FF00-7760-BC15014EA700}"); ein Eintrag darf auf '*' enden (Praefix).
+        // Wird statt detect_display_name_contains benutzt, wenn der Anzeigename mehrdeutig ist:
+        // Adobe Acrobat Reader und Acrobat PRO heissen beide "Adobe Acrobat (64-bit)" und
+        // unterscheiden sich nur im Produktcode.
+        public string[] detect_product_codes { get; set; }
+
+        // Sicherheitsnetz gegen Verwechslung: Gibt es einen Uninstall-Eintrag, dessen Anzeigename
+        // diesen Text enthaelt, dessen Schluessel aber NICHT zu detect_product_codes gehoert, ist
+        // ein ANDERES Produkt derselben Familie installiert (z.B. Acrobat Pro statt Reader). Die
+        // App wird dann nicht installiert/ueberinstalliert, sondern als "blockiert" gemeldet.
+        public string blocked_name_contains { get; set; }
+
+        // Optional: Regex (Gruppe 1) auf die installierte DisplayVersion, um den mit der "verfuegbaren"
+        // Version vergleichbaren Teil zu isolieren (Brave: "155.1.97.56" -> "1.97.56").
+        public string installed_version_regex { get; set; }
+
+        // Prozessnamen (ohne ".exe") der laufenden Anwendung. Laeuft die App beim Update, fragt
+        // Basic Installer vorher nach, ob sie geschlossen werden soll.
+        public string[] process_names { get; set; }
+
         // Fuer MSIX/AppX-Apps (z.B. "MSTeams"): Paketname, nach dem im AppX-Paketspeicher gesucht
         // wird, wenn die klassische Uninstall-Registry nichts liefert (siehe InstalledAppDetector).
         public string detect_appx_name { get; set; }

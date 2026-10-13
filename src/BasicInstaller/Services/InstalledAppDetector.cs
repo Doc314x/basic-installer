@@ -55,6 +55,88 @@ namespace BasicInstaller.Services
             return null;
         }
 
+        private static bool KeyMatches(string keyName, string[] codes)
+        {
+            foreach (var c in codes)
+            {
+                if (string.IsNullOrWhiteSpace(c)) continue;
+                if (c.EndsWith("*", StringComparison.Ordinal))
+                {
+                    if (keyName.StartsWith(c.Substring(0, c.Length - 1), StringComparison.OrdinalIgnoreCase)) return true;
+                }
+                else if (string.Equals(keyName, c, StringComparison.OrdinalIgnoreCase)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Version eines Produkts, erkannt ueber den Schluesselnamen (Produktcode) des Uninstall-Eintrags.
+        /// </summary>
+        public static string FindInstalledVersionByProductCode(string[] productCodes)
+        {
+            if (productCodes == null || productCodes.Length == 0) return null;
+
+            foreach (var (hive, view) in Targets)
+            {
+                RegistryKey baseKey = null, uninstallKey = null;
+                try
+                {
+                    baseKey = RegistryKey.OpenBaseKey(hive, view);
+                    uninstallKey = baseKey.OpenSubKey(UninstallPath);
+                    if (uninstallKey == null) continue;
+                    foreach (var name in uninstallKey.GetSubKeyNames())
+                    {
+                        if (!KeyMatches(name, productCodes)) continue;
+                        using (var sub = uninstallKey.OpenSubKey(name))
+                        {
+                            var v = sub?.GetValue("DisplayVersion") as string;
+                            if (!string.IsNullOrWhiteSpace(v)) return v;
+                        }
+                    }
+                }
+                catch (Exception) { /* Zugriffsfehler = nicht gefunden */ }
+                finally { uninstallKey?.Dispose(); baseKey?.Dispose(); }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Sucht ein ANDERES Produkt derselben Familie (Anzeigename enthaelt nameContains, Schluessel
+        /// gehoert aber nicht zu ownCodes). Liefert "Anzeigename Version" oder null.
+        /// </summary>
+        public static string FindForeignProduct(string nameContains, string[] ownCodes)
+        {
+            if (string.IsNullOrWhiteSpace(nameContains)) return null;
+            ownCodes = ownCodes ?? new string[0];
+
+            foreach (var (hive, view) in Targets)
+            {
+                RegistryKey baseKey = null, uninstallKey = null;
+                try
+                {
+                    baseKey = RegistryKey.OpenBaseKey(hive, view);
+                    uninstallKey = baseKey.OpenSubKey(UninstallPath);
+                    if (uninstallKey == null) continue;
+                    foreach (var name in uninstallKey.GetSubKeyNames())
+                    {
+                        if (KeyMatches(name, ownCodes)) continue;
+                        using (var sub = uninstallKey.OpenSubKey(name))
+                        {
+                            var dn = sub?.GetValue("DisplayName") as string;
+                            if (dn == null || dn.IndexOf(nameContains, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                            // Updates/Hotfix-Eintraege und Teilkomponenten (z.B. "Acrobat ... Update") ignorieren
+                            if (sub.GetValue("ParentKeyName") != null || sub.GetValue("SystemComponent") is int sc && sc == 1) continue;
+                            var ver = sub.GetValue("DisplayVersion") as string;
+                            return (dn + " " + ver).Trim();
+                        }
+                    }
+                }
+                catch (Exception) { /* Zugriffsfehler = nicht gefunden */ }
+                finally { uninstallKey?.Dispose(); baseKey?.Dispose(); }
+            }
+            return null;
+        }
+
         // MSIX/AppX-Pakete (z.B. das neue Teams) tauchen in der klassischen Uninstall-Registry NICHT
         // auf. Ihr Paketname steht aber als Schluessel "<Name>_<Version>_<Arch>__<PublisherId>" im
         // AppX-Paketspeicher: fuer alle Benutzer unter HKLM ...\AppxAllUserStore\Applications, fuer

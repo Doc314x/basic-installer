@@ -3,6 +3,10 @@
   "apps": [
     {
       "id": "brave",
+      "version_url": "https://github.com/brave/brave-browser/releases/latest",
+      "version_regex": "releases/tag/v?(\\d+(?:\\.\\d+)+)",
+      "installed_version_regex": "^\\d+\\.(\\d+\\.\\d+\\.\\d+)$",
+      "process_names": ["brave"],
       "name": "Brave Browser",
       "category": "Browser",
       "homepage": "https://brave.com",
@@ -23,6 +27,7 @@
     },
     {
       "id": "firefox",
+      "process_names": ["firefox"],
       "name": "Mozilla Firefox",
       "category": "Browser",
       "homepage": "https://www.mozilla.org/firefox/",
@@ -50,6 +55,7 @@
     },
     {
       "id": "vlc",
+      "process_names": ["vlc"],
       "name": "VLC Media Player",
       "category": "Multimedia",
       "homepage": "https://www.videolan.org/vlc/",
@@ -84,6 +90,7 @@
     },
     {
       "id": "irfanview",
+      "process_names": ["i_view64", "i_view32"],
       "name": "IrfanView",
       "category": "Multimedia",
       "homepage": "https://www.irfanview.com/",
@@ -106,6 +113,9 @@
     },
     {
       "id": "acrobat_reader",
+      "detect_product_codes": ["{AC76BA86-1033-FF00-7760-BC15014EA700}", "{AC76BA86-7AD7-*"],
+      "blocked_name_contains": "Acrobat",
+      "process_names": ["AcroRd32", "Acrobat", "AcroCEF"],
       "name": "Adobe Acrobat Reader DC",
       "category": "Office",
       "homepage": "https://get.adobe.com/reader/",
@@ -127,7 +137,7 @@
       "default_language": null,
       "languages": null,
       "notes": "Vollstaendiger MUI-Offline-Installer (~820 MB, alle Sprachen, 64 Bit) von ardownload2.adobe.com. Der fruehere Online-Stub (readerdc64_<sprache>_cra_install.exe) ist unbrauchbar: er fragt get3.adobe.com/reader/webservices/adm/ ab, bekommt HTTP 403, zeigt eine Fehlerseite und beendet sich trotzdem mit Exit-Code 0 (live getestet 13.10.2026). Die Version wird zur Laufzeit von Adobes eigener API rdc.adobe.io ermittelt (version_url); der Ordner/Dateiname enthaelt sie ohne Punkte ({version_nodots}, z.B. 26.002.21931 = 2600221931). Silent-Schalter gemaess winget-Manifest Adobe.Acrobat.Reader.64-bit: -sfx_nu /sAll /rs /msi (+ EULA_ACCEPT=YES). In der Registry heisst das Produkt \"Adobe Acrobat (64-bit)\" (nicht \"Acrobat Reader\") - daher detect_display_name_contains \"Adobe Acrobat\". Die MUI-Variante installiert alle Sprachen; eine Sprachwahl per Schalter ist nicht modelliert.",
-      "detect_display_name_contains": "Adobe Acrobat"
+      "detect_display_name_contains": null
     },
     {
       "id": "eset_nod32",
@@ -169,6 +179,7 @@
     },
     {
       "id": "winrar",
+      "process_names": ["WinRAR"],
       "name": "WinRAR",
       "category": "Archivierung",
       "homepage": "https://www.win-rar.com/",
@@ -221,6 +232,7 @@
     },
     {
       "id": "7zip",
+      "process_names": ["7zFM", "7zG"],
       "name": "7-Zip",
       "category": "Archivierung",
       "homepage": "https://www.7-zip.org/",
@@ -242,6 +254,7 @@
     },
     {
       "id": "notepadpp",
+      "process_names": ["notepad++"],
       "name": "Notepad++",
       "category": "Entwicklung/Text",
       "homepage": "https://notepad-plus-plus.org/",
@@ -263,6 +276,7 @@
     },
     {
       "id": "libreoffice",
+      "process_names": ["soffice", "soffice.bin"],
       "name": "LibreOffice",
       "category": "Office",
       "homepage": "https://www.libreoffice.org/",
@@ -287,6 +301,7 @@
     },
     {
       "id": "thunderbird",
+      "process_names": ["thunderbird"],
       "name": "Mozilla Thunderbird",
       "category": "E-Mail",
       "homepage": "https://www.thunderbird.net/",
@@ -314,6 +329,7 @@
     },
     {
       "id": "zoom",
+      "process_names": ["Zoom"],
       "name": "Zoom",
       "category": "Kommunikation",
       "homepage": "https://zoom.us/",
@@ -334,6 +350,9 @@
     },
     {
       "id": "office365",
+      "version_url": "https://clients.config.office.net/releases/v1.0/OfficeReleases",
+      "version_regex": "\"channelId\":\"MonthlyEnterprise\",\"alternateNames\":\\[[^\\]]*\\],\"latestVersion\":\"([\\d.]+)\"",
+      "process_names": ["WINWORD", "EXCEL", "POWERPNT", "OUTLOOK", "ONENOTE", "MSACCESS", "MSPUB"],
       "name": "Microsoft 365 Apps (Office)",
       "category": "Office",
       "homepage": "https://www.microsoft.com/microsoft-365",
