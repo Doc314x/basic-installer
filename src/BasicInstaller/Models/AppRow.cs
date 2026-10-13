@@ -39,7 +39,28 @@ namespace BasicInstaller.Models
         /// Installieren trotzdem einen Lauf erzwingt statt zu überspringen.
         /// </summary>
         public bool HasKnownUpdate => InstalledVersion != "–" && LatestVersion != "–"
-            && !SameVersion(InstalledVersion, LatestVersion);
+            && !SameVersion(InstalledVersion, LatestVersion)
+            && IsNewer(LatestVersion, InstalledVersion);
+
+        /// <summary>
+        /// True, wenn "candidate" numerisch neuer ist als "current" (fehlende Stellen = 0).
+        /// Eine nicht numerisch lesbare Angabe zaehlt vorsichtig als "anders = Update", wie
+        /// bisher. Verhindert, dass eine NEUERE installierte Version (z.B. Acrobat 21996 gegen
+        /// die von Adobes API genannte 21931) als "Update verfuegbar" erscheint.
+        /// </summary>
+        private static bool IsNewer(string candidate, string current)
+        {
+            var pc = (candidate ?? "").Trim().TrimStart('v', 'V').Split('.');
+            var pu = (current ?? "").Trim().TrimStart('v', 'V').Split('.');
+            for (var i = 0; i < Math.Max(pc.Length, pu.Length); i++)
+            {
+                long x = 0, y = 0;
+                if (i < pc.Length && !long.TryParse(pc[i], out x)) return true;
+                if (i < pu.Length && !long.TryParse(pu[i], out y)) return true;
+                if (x != y) return x > y;
+            }
+            return false;
+        }
 
         /// <summary>
         /// Gleichheit zweier Versionsangaben trotz unterschiedlicher Schreibweise der
@@ -48,10 +69,18 @@ namespace BasicInstaller.Models
         /// 7-Zip "26.04" vs. Dateiname "2604"; LibreOffice "26.8.1.2" vs. "26.8.1"
         /// (Praefix der Teile gilt als gleich).
         /// </summary>
+        /// <summary>"7.23.0" -> "7.23" (WinRAR meldet in der Registry eine Stelle mehr als die Download-Seite).</summary>
+        private static string TrimTrailingZeroParts(string version)
+        {
+            while (version.EndsWith(".0", StringComparison.Ordinal))
+                version = version.Substring(0, version.Length - 2);
+            return version;
+        }
+
         public static bool SameVersion(string a, string b)
         {
-            a = (a ?? "").Trim().TrimStart('v', 'V');
-            b = (b ?? "").Trim().TrimStart('v', 'V');
+            a = TrimTrailingZeroParts((a ?? "").Trim().TrimStart('v', 'V'));
+            b = TrimTrailingZeroParts((b ?? "").Trim().TrimStart('v', 'V'));
             if (a == b) return true;
             if (a.Replace(".", "") == b.Replace(".", "")) return true;
 

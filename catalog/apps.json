@@ -109,9 +109,13 @@
       "name": "Adobe Acrobat Reader DC",
       "category": "Office",
       "homepage": "https://get.adobe.com/reader/",
-      "installer_url": "https://admdownload.adobe.com/bin/live/readerdc64_de_cra_install.exe",
+      "installer_url": "https://ardownload2.adobe.com/pub/adobe/acrobat/win/AcrobatDC/{version_nodots}/AcroRdrDCx64{version_nodots}_MUI.exe",
+      "version_url": "https://rdc.adobe.io/reader/products?lang=de&site=enterprise&os=Windows%2011&country=DE&nativeOs=Windows%2010&api_key=dc-get-adobereader-cdn",
+      "version_regex": "\"version\":\"(\\d+\\.\\d+\\.\\d+)\"",
+      "fallback_version": "26.002.21996",
       "installer_type": "exe",
       "silent_args": [
+        "-sfx_nu",
         "/sAll",
         "/rs",
         "/msi",
@@ -120,19 +124,10 @@
       "default_install_path": null,
       "path_arg_template": null,
       "sha256": null,
-      "default_language": "de",
-      "languages": {
-        "de": {
-          "installer_url": "https://admdownload.adobe.com/bin/live/readerdc64_de_cra_install.exe",
-          "extra_args": null
-        },
-        "en": {
-          "installer_url": "https://admdownload.adobe.com/bin/live/readerdc64_en_cra_install.exe",
-          "extra_args": null
-        }
-      },
-      "notes": "Online-Installer-Stub (Adobe Download Manager, ~1,2 MB, von Adobe signiert) mit stabiler URL ohne Versionsnummer, je Sprache getrennt (readerdc64_<sprache>_cra_install.exe, de und en live geprueft 13.10.2026: 200, echte signierte EXE). Der Stub laedt das eigentliche Produkt beim Start nach - fuer die Installation ist also Internet noetig (Vorladen/Cache haelt nur den Stub). silent_args nach Adobes dokumentierter Reihenfolge (/sAll /rs /msi EULA_ACCEPT=YES): an einer echten Installation noch NICHT verifiziert. Version in der Spalte Verfuegbar nicht ermittelbar (kein Versionsbezug in der URL).",
-      "detect_display_name_contains": "Acrobat Reader"
+      "default_language": null,
+      "languages": null,
+      "notes": "Vollstaendiger MUI-Offline-Installer (~820 MB, alle Sprachen, 64 Bit) von ardownload2.adobe.com. Der fruehere Online-Stub (readerdc64_<sprache>_cra_install.exe) ist unbrauchbar: er fragt get3.adobe.com/reader/webservices/adm/ ab, bekommt HTTP 403, zeigt eine Fehlerseite und beendet sich trotzdem mit Exit-Code 0 (live getestet 13.10.2026). Die Version wird zur Laufzeit von Adobes eigener API rdc.adobe.io ermittelt (version_url); der Ordner/Dateiname enthaelt sie ohne Punkte ({version_nodots}, z.B. 26.002.21931 = 2600221931). Silent-Schalter gemaess winget-Manifest Adobe.Acrobat.Reader.64-bit: -sfx_nu /sAll /rs /msi (+ EULA_ACCEPT=YES). In der Registry heisst das Produkt \"Adobe Acrobat (64-bit)\" (nicht \"Acrobat Reader\") - daher detect_display_name_contains \"Adobe Acrobat\". Die MUI-Variante installiert alle Sprachen; eine Sprachwahl per Schalter ist nicht modelliert.",
+      "detect_display_name_contains": "Adobe Acrobat"
     },
     {
       "id": "eset_nod32",

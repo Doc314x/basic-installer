@@ -924,6 +924,7 @@ namespace BasicInstaller
             var done = 0;
             var failed = 0;
             var skipped = 0;
+            var reportedOk = new List<AppRow>(); // Installer meldete Erfolg - wird unten gegen die Registry gegengeprueft
 
             foreach (var row in selected)
             {
@@ -947,7 +948,9 @@ namespace BasicInstaller
                 {
                     try
                     {
-                        if (!await InstallOneAsync(row))
+                        if (await InstallOneAsync(row))
+                            reportedOk.Add(row);
+                        else
                             failed++;
                     }
                     catch (Exception ex)
@@ -964,8 +967,37 @@ namespace BasicInstaller
                 _progressBar.Value = Math.Min(100, (int)(done * 100.0 / selected.Count));
             }
 
+            // Einige Installer (im Praxistest WinRAR) kehren zurueck, bevor sie ihren Uninstall-
+            // Registry-Eintrag geschrieben haben - der Scan direkt nach dem Installer zeigte dann
+            // "–", obwohl installiert. Deshalb am Ende des Laufs noch einmal kurz warten und
+            // alle gewaehlten Zeilen neu pruefen.
+            await Task.Delay(2500);
+            foreach (var row in selected)
+            {
+                row.RefreshInstalledVersion();
+                RefreshInstalledCell(row);
+            }
+
+            // Exit-Code 0 heisst nicht "installiert": der Adobe-Online-Stub beendete sich im
+            // Praxistest nach einer Fehlerseite (HTTP 403) mit Exit-Code 0, und die App meldete
+            // "OK", obwohl nichts installiert war. Wo der Katalog eine Erkennung kennt
+            // (portable Apps und Apps ohne detect_display_name_contains ausgenommen), wird
+            // das Ergebnis deshalb gegen die Registry geprueft und sonst deutlich gewarnt.
+            var unverified = 0;
+            foreach (var row in reportedOk)
+            {
+                var src = row.Source;
+                if (string.IsNullOrWhiteSpace(src.detect_display_name_contains)) continue;
+                if (string.Equals(src.installer_type, "portable", StringComparison.OrdinalIgnoreCase)) continue;
+                if (row.InstalledVersion != "–") continue;
+
+                unverified++;
+                AppendLog($"WARNUNG {row.Name}: Der Installer meldete Erfolg, das Programm wurde aber nicht in der Windows-Programmliste erkannt - bitte prüfen.");
+            }
+
             var ok = done - failed - skipped;
-            _lblStatus.Text = $"Fertig: {ok} erfolgreich, {skipped} übersprungen, {failed} fehlgeschlagen.";
+            _lblStatus.Text = $"Fertig: {ok} erfolgreich, {skipped} übersprungen, {failed} fehlgeschlagen"
+                + (unverified > 0 ? $", {unverified} nicht verifiziert (siehe Log)." : ".");
 
             UpdateStatusPills();
             SaveUserConfig();
