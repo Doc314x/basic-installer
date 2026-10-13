@@ -406,3 +406,37 @@ UI-Automation (`System.Windows.Automation`, ValuePattern liefert Zellwerte) und 
 - **`CheckBox` mit `AutoSize` + `MaximumSize` bricht Text nicht um, sondern schneidet ihn ab** - langen
   Text in ein separates `Label` mit `MaximumSize` auslagern.
 - **Branch-Namen mit `/`** (z.B. `fix/...`) brachen ZIP-/Artifact-Namen im Workflow (`SAFE_REF`).
+
+## Round five: end-to-end install tests on real Windows (13.10.2026)
+
+Test harness: with an elevated shell the GitHub artifact can be started without `RunAsInvoker`; real
+silent installs/uninstalls of small apps (7-Zip, WinRAR, Notepad++, IrfanView, VLC) were run through the
+app and removed again with their registry `UninstallString` (`/S`, WinRAR `/s`, IrfanView `/silent`).
+If the RDP session is locked (`LogonUI` running), UI automation and screenshots fail ("Das Handle ist
+ungueltig") - then call the app's own code headless via reflection (`CatalogLoader.Load`,
+`LanguageResolution.ResolveInstallerUrlAsync`, `Downloader.DownloadAsync`, `SilentInstaller.Run`).
+
+- **Version variables in the catalog** (`version_url`, `version_regex`, `fallback_version`, placeholders
+  `{version}` / `{version_nodots}` in `installer_url`) - see README. The regex is matched against the final
+  URL after redirects first (`github.com/<o>/<r>/releases/latest` -> `.../tag/26.04`, no API rate limit),
+  then against the body; highest match wins. `VersionResolver` caches per app id; "Status aktualisieren"
+  clears the cache.
+- **`AppRow.SameVersion`/`IsNewer`**: sources format versions differently (WinRAR registry `7.23.0` vs page
+  `723`, 7-Zip `26.04` vs `2604`, LibreOffice `26.8.1.2` vs `26.8.1`). Compare with trailing-`.0`
+  trimming, dot-less equality and part-prefix equality, and only call it an update when the available
+  version is numerically newer (Acrobat was newer than Adobe's API version).
+- **Some installers return before writing their Uninstall registry key** (WinRAR) - the scan right after
+  the installer showed "-". The install run now rescans after 2.5 s.
+- **Exit code 0 is not proof of success**: the old Adobe online stub hit HTTP 403 on `get3.adobe.com`,
+  showed an error page and still exited 0; the app logged "OK". After a run, apps with
+  `detect_display_name_contains` (not portable) that are still undetected get a log WARNUNG and the status
+  line counts them as "nicht verifiziert".
+- **Acrobat Reader**: use the full MUI installer
+  `ardownload2.adobe.com/pub/adobe/acrobat/win/AcrobatDC/<ver-no-dots>/AcroRdrDCx64<ver-no-dots>_MUI.exe`
+  (~820 MB, version from `rdc.adobe.io/reader/products?...api_key=dc-get-adobereader-cdn`), silent
+  `-sfx_nu /sAll /rs /msi EULA_ACCEPT=YES` (winget manifest). Registry name is "Adobe Acrobat (64-bit)".
+- **Referer**: catalog field `referer` -> `Downloader` header. IrfanView's `irfanview.info` serves an HTML
+  "Click again" page without `Referer: https://www.irfanview.info/`. The downloader now rejects a
+  `text/html` response for `.exe`/`.msi` targets instead of caching an HTML file. No User-Agent is sent on
+  purpose (`get.videolan.org` returns an HTML page for browser UAs). Downloads retry 3x (flaky VLC mirrors).
+- **TeamViewer custom QuickSupport** and the other items above are described in their catalog `notes`.
