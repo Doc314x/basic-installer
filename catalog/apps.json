@@ -53,7 +53,7 @@
       "name": "VLC Media Player",
       "category": "Multimedia",
       "homepage": "https://www.videolan.org/vlc/",
-      "installer_url": null,
+      "installer_url": "https://download.videolan.org/vlc/last/win64/vlc-3.0.24-win64.exe",
       "installer_type": "exe",
       "silent_args": [
         "/S"
@@ -64,13 +64,13 @@
       "default_language": "de",
       "languages": {
         "de": {
-          "installer_url": null,
+          "installer_url": "https://download.videolan.org/vlc/last/win64/vlc-3.0.24-win64.exe",
           "extra_args": [
             "/L=1031"
           ]
         },
         "en": {
-          "installer_url": null,
+          "installer_url": "https://download.videolan.org/vlc/last/win64/vlc-3.0.24-win64.exe",
           "extra_args": [
             "/L=1033"
           ]
@@ -132,7 +132,7 @@
       "name": "ESET NOD32 Antivirus",
       "category": "Sicherheit",
       "homepage": "https://www.eset.com/",
-      "installer_url": null,
+      "installer_url": "https://download.eset.com/com/eset/tools/installers/live_eav/latest/eset_nod32_antivirus_live_installer.exe",
       "installer_type": "exe",
       "silent_args": [
         "--silent",
@@ -146,11 +146,11 @@
       "default_language": "de",
       "languages": {
         "de": {
-          "installer_url": null,
+          "installer_url": "https://download.eset.com/com/eset/tools/installers/live_eav/latest/eset_nod32_antivirus_live_installer.exe",
           "extra_args": null
         },
         "en": {
-          "installer_url": null,
+          "installer_url": "https://download.eset.com/com/eset/tools/installers/live_eav/latest/eset_nod32_antivirus_live_installer.exe",
           "extra_args": null
         }
       },
@@ -170,7 +170,7 @@
       "name": "WinRAR",
       "category": "Archivierung",
       "homepage": "https://www.win-rar.com/",
-      "installer_url": null,
+      "installer_url": "https://www.rarlab.com/rar/winrar-x64-723.exe",
       "installer_type": "exe",
       "silent_args": [
         "/S"
@@ -219,7 +219,7 @@
       "name": "7-Zip",
       "category": "Archivierung",
       "homepage": "https://www.7-zip.org/",
-      "installer_url": null,
+      "installer_url": "https://github.com/ip7z/7zip/releases/download/26.04/7z2604-x64.exe",
       "installer_type": "exe",
       "silent_args": [
         "/S"
@@ -237,7 +237,7 @@
       "name": "Notepad++",
       "category": "Entwicklung/Text",
       "homepage": "https://notepad-plus-plus.org/",
-      "installer_url": null,
+      "installer_url": "https://github.com/notepad-plus-plus/notepad-plus-plus/releases/download/v8.9.8.1/npp.8.9.8.1.Installer.x64.exe",
       "installer_type": "exe",
       "silent_args": [
         "/S"
@@ -255,7 +255,7 @@
       "name": "LibreOffice",
       "category": "Office",
       "homepage": "https://www.libreoffice.org/",
-      "installer_url": null,
+      "installer_url": "https://download.documentfoundation.org/libreoffice/stable/26.8.1/win/x86_64/LibreOffice_26.8.1_Win_x86-64.msi",
       "installer_type": "msi",
       "silent_args": [
         "/qn",
@@ -397,7 +397,7 @@
       "name": "Lenovo System Update",
       "category": "Treiber/Firmware",
       "homepage": "https://support.lenovo.com/us/en/downloads/ds012808",
-      "installer_url": null,
+      "installer_url": "https://download.lenovo.com/pccbbs/thinkvantage_en/system_update_5.08.04.85.exe",
       "installer_type": "exe",
       "silent_args": [
         "/VERYSILENT",

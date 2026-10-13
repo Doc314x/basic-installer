@@ -426,8 +426,8 @@ namespace BasicInstaller
                 ReadOnly = true,
                 AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
                 FillWeight = 75,
-                ToolTipText = "Nur per 'Status aktualisieren' ermittelt, nicht automatisch beim Start - " +
-                               "und nur fuer Apps moeglich, deren Download-Link die Version in der finalen " +
+                ToolTipText = "Wird beim Start und per 'Status aktualisieren' ermittelt - " +
+                               "nur fuer Apps moeglich, deren Download-Link die Version in der finalen " +
                                "URL zeigt. '–' heisst 'nicht ermittelbar', nicht 'kein Update'.",
             };
             _colPath = new DataGridViewTextBoxColumn
@@ -466,6 +466,23 @@ namespace BasicInstaller
             };
             _grid.CellValueChanged += Grid_CellValueChanged;
             _grid.CellClick += Grid_CellClick;
+            _grid.CellPainting += Grid_CellPainting;
+        }
+
+        /// <summary>
+        /// Zeilen ohne Optionen/Lizenz zeigten in der Zahnrad-Spalte trotz leerem
+        /// Text weiterhin einen leeren, klickbar wirkenden Button-Rahmen (im
+        /// Praxistest gesehen). Hier wird fuer solche Zellen nur der Hintergrund
+        /// gezeichnet, kein Button.
+        /// </summary>
+        private void Grid_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex != _colOptions.Index) return;
+            if (!(_grid.Rows[e.RowIndex].DataBoundItem is AppRow row)) return;
+            if (row.HasOptions || row.LicenseKeyEditable) return;
+
+            e.PaintBackground(e.ClipBounds, false);
+            e.Handled = true;
         }
 
         private string BuildFooterText()
@@ -873,6 +890,12 @@ namespace BasicInstaller
 
             UpdateInstallButtonEnabled(); // falls die Auto-Auswahl oben den Installieren-Button gerade erst aktiviert hat
             UpdateStatusPills();
+            // BUG (im Praxistest per UI-Automation bestaetigt): die Zellwerte oben
+            // wurden korrekt gesetzt (ValuePattern lieferte z.B. "157.0.1"), aber das
+            // Grid zeigte weiter "-", bis es von aussen neu gezeichnet wurde. Das
+            // Setzen von Cell.Value an gebundenen Spalten invalidiert die Zelle hier
+            // nicht zuverlaessig - deshalb explizit neu zeichnen.
+            _grid.Invalidate();
             _lblStatus.Text = "Installationsstatus aktualisiert.";
         }
 

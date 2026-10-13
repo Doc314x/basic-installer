@@ -165,13 +165,23 @@ namespace BasicInstaller
 
                 _chkRemember = new CheckBox
                 {
-                    Text = "🔒 Im Windows Credential Manager merken (nur dieser PC – nie in config.json, nie im Repo)",
+                    // Kurzer Text: ein CheckBox mit AutoSize + MaximumSize bricht lange
+                    // Texte NICHT um, sondern schneidet sie ab (im Praxistest gesehen).
+                    // Die Erklaerung steht deshalb in einem Label, das zuverlaessig umbricht.
+                    Text = "🔒 Im Windows Credential Manager merken",
                     AutoSize = true,
                     Checked = WindowsCredentialStore.TryRead(WindowsCredentialStore.KeyForApp(row.Source.id)) != null,
                     Margin = new Padding(0, 8, 0, 0),
-                    MaximumSize = new Size(380, 0),
                 };
                 layout.Controls.Add(_chkRemember);
+                layout.Controls.Add(new Label
+                {
+                    Text = "Gilt nur für diesen PC – nie in config.json, nie im Repo.",
+                    AutoSize = true,
+                    ForeColor = Color.DimGray,
+                    Margin = new Padding(20, 0, 0, 0),
+                    MaximumSize = new Size(360, 0),
+                });
             }
 
             var btnOk = new Button { Text = "OK", DialogResult = DialogResult.OK, AutoSize = true };
