@@ -849,6 +849,16 @@ namespace BasicInstaller
             foreach (var row in _rows)
                 row.RefreshInstalledVersion(); // Registry-Scan ist synchron und schnell
 
+            // Sofort einfaerben (installiert = gruen), noch vor der langsameren Online-Pruefung unten;
+            // dort wird anschliessend veraltet = rot nachgetragen.
+            foreach (DataGridViewRow gridRow in _grid.Rows)
+            {
+                if (!(gridRow.DataBoundItem is AppRow r0)) continue;
+                gridRow.Cells[_colInstalled.Index].Value = r0.InstalledVersion;
+                ApplyRowStatusStyle(gridRow, r0);
+            }
+            _grid.Invalidate();
+
             _lblStatus.Text = "Prüfe verfügbare Versionen (nur für Apps mit erkennbarer URL) ...";
 
             // Parallel statt sequenziell - bei 14 Katalog-Eintraegen waere ein
@@ -889,20 +899,7 @@ namespace BasicInstaller
                     gridRow.Cells[_colSelected.Index].Value = true;
                 }
 
-                // Dezente Hervorhebung, wenn beide Werte bekannt sind UND
-                // voneinander abweichen - genau das war die zweimal gestellte
-                // Nutzerfrage ("ob aktuell oder ob Update moeglich").
-                var highlight = row.HasKnownUpdate ? Theme.AccentDark : Color.Empty;
-                var boldFont = row.HasKnownUpdate ? new Font(_grid.Font, FontStyle.Bold) : null;
-
-                // Name-Spalte mit einfaerben, nicht nur Installiert/Verfuegbar -
-                // nach Patch-My-PC-Vorbild sticht eine Zeile mit anstehendem
-                // Update schon beim Ueberfliegen der Namensliste ins Auge.
-                gridRow.Cells[_colName.Index].Style.ForeColor = highlight;
-                gridRow.Cells[_colName.Index].Style.Font = boldFont;
-                gridRow.Cells[_colInstalled.Index].Style.ForeColor = highlight;
-                gridRow.Cells[_colLatest.Index].Style.ForeColor = highlight;
-                gridRow.Cells[_colLatest.Index].Style.Font = boldFont;
+                ApplyRowStatusStyle(gridRow, row);
             }
 
             UpdateInstallButtonEnabled(); // falls die Auto-Auswahl oben den Installieren-Button gerade erst aktiviert hat
@@ -1212,8 +1209,49 @@ namespace BasicInstaller
                 if (ReferenceEquals(gridRow.DataBoundItem, row))
                 {
                     gridRow.Cells[_colInstalled.Index].Value = row.InstalledVersion;
+                    ApplyRowStatusStyle(gridRow, row);
+                    _grid.InvalidateRow(gridRow.Index);
                     break;
                 }
+            }
+        }
+
+        private Font _boldGridFont;
+
+        /// <summary>
+        /// Faerbt die Zeile nach ihrem Zustand (Nutzerwunsch): installiert und aktuell = gruen,
+        /// installiert, aber veraltet (Update bekannt) = rot und fett, nicht installiert =
+        /// unveraendert. "Aktuell" heisst hier wie bei der Installieren-Regel: kein bekanntes
+        /// Update (ist die verfuegbare Version nicht ermittelbar, gilt die App als aktuell).
+        /// Gefaerbt werden Name, Installiert und Verfuegbar - nicht Pfad und Haken, damit
+        /// die Bedienelemente lesbar bleiben.
+        /// </summary>
+        private void ApplyRowStatusStyle(DataGridViewRow gridRow, AppRow row)
+        {
+            Color fore = Color.Empty, back = Color.Empty;
+            Font font = null;
+
+            if (row.InstalledVersion != "–")
+            {
+                if (row.HasKnownUpdate)
+                {
+                    fore = Theme.Danger;
+                    back = Theme.DangerLight;
+                    font = _boldGridFont ?? (_boldGridFont = new Font(_grid.Font, FontStyle.Bold));
+                }
+                else
+                {
+                    fore = Theme.Success;
+                    back = Theme.SuccessLight;
+                }
+            }
+
+            foreach (var col in new[] { _colName, _colInstalled, _colLatest })
+            {
+                var style = gridRow.Cells[col.Index].Style;
+                style.ForeColor = fore;
+                style.BackColor = back;
+                style.Font = font;
             }
         }
 
