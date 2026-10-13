@@ -105,13 +105,13 @@
       "name": "Adobe Acrobat Reader DC",
       "category": "Office",
       "homepage": "https://get.adobe.com/reader/",
-      "installer_url": null,
+      "installer_url": "https://admdownload.adobe.com/bin/live/readerdc64_de_cra_install.exe",
       "installer_type": "exe",
       "silent_args": [
         "/sAll",
+        "/rs",
         "/msi",
-        "EULA_ACCEPT=YES",
-        "/qn"
+        "EULA_ACCEPT=YES"
       ],
       "default_install_path": null,
       "path_arg_template": null,
@@ -119,15 +119,15 @@
       "default_language": "de",
       "languages": {
         "de": {
-          "installer_url": null,
+          "installer_url": "https://admdownload.adobe.com/bin/live/readerdc64_de_cra_install.exe",
           "extra_args": null
         },
         "en": {
-          "installer_url": null,
+          "installer_url": "https://admdownload.adobe.com/bin/live/readerdc64_en_cra_install.exe",
           "extra_args": null
         }
       },
-      "notes": "Adobe bietet keine stabile Direct-Download-URL fuer die jeweils neueste Version; installer_url je Sprachvariante manuell setzen (Adobe liefert sprachspezifische Installer-Dateien, z.B. ..._de_DE.exe / ..._en_US.exe - URL hier je Locale eintragen).",
+      "notes": "Online-Installer-Stub (Adobe Download Manager, ~1,2 MB, von Adobe signiert) mit stabiler URL ohne Versionsnummer, je Sprache getrennt (readerdc64_<sprache>_cra_install.exe, de und en live geprueft 13.10.2026: 200, echte signierte EXE). Der Stub laedt das eigentliche Produkt beim Start nach - fuer die Installation ist also Internet noetig (Vorladen/Cache haelt nur den Stub). silent_args nach Adobes dokumentierter Reihenfolge (/sAll /rs /msi EULA_ACCEPT=YES): an einer echten Installation noch NICHT verifiziert. Version in der Spalte Verfuegbar nicht ermittelbar (kein Versionsbezug in der URL).",
       "detect_display_name_contains": "Acrobat Reader"
     },
     {

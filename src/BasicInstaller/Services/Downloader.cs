@@ -12,9 +12,17 @@ namespace BasicInstaller.Services
     /// ewig an einer toten Verbindung (gleiches Problem wie IMAP_TIMEOUT im
     /// IMAP-Mover-Projekt), daher ein grosszuegiges, aber endliches Limit statt
     /// gar keinem.
+    ///
+    /// Bis zu <see cref="MaxAttempts"/> Versuche: Mirror-Redirector wie
+    /// get.videolan.org leiten jede Anfrage auf einen anderen Mirror um, und
+    /// einzelne Mirror sind zeitweise kaputt ("Fehler beim Senden der Anforderung",
+    /// im Praxistest bei VLC gesehen) - ein neuer Versuch trifft oft einen
+    /// funktionierenden. Bewusst KEIN User-Agent-Header: get.videolan.org liefert
+    /// bei einem Browser-User-Agent eine HTML-Seite statt der Datei.
     /// </summary>
     public static class Downloader
     {
+        private const int MaxAttempts = 3;
         private static readonly TimeSpan DownloadTimeout = TimeSpan.FromMinutes(15);
 
         public static string CacheDirectory { get; } = Path.Combine(
@@ -47,32 +55,60 @@ namespace BasicInstaller.Services
             {
                 cts.CancelAfter(DownloadTimeout);
 
-                using (var client = new HttpClient())
-                using (var response = await client
-                    .GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cts.Token)
-                    .ConfigureAwait(false))
+                for (var attempt = 1; ; attempt++)
                 {
-                    response.EnsureSuccessStatusCode();
-                    var totalBytes = response.Content.Headers.ContentLength ?? -1L;
-
-                    using (var contentStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
-                    using (var fileStream = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
+                    try
                     {
-                        var buffer = new byte[81920];
-                        long totalRead = 0;
-                        int read;
-                        while ((read = await contentStream.ReadAsync(buffer, 0, buffer.Length, cts.Token).ConfigureAwait(false)) > 0)
-                        {
-                            await fileStream.WriteAsync(buffer, 0, read, cts.Token).ConfigureAwait(false);
-                            totalRead += read;
-                            if (totalBytes > 0 && progress != null)
-                                progress.Report((int)(totalRead * 100 / totalBytes));
-                        }
+                        await DownloadOnceAsync(url, destination, progress, cts.Token).ConfigureAwait(false);
+                        return destination;
+                    }
+                    catch (Exception ex) when (!cts.IsCancellationRequested
+                        && (ex is HttpRequestException || ex is IOException))
+                    {
+                        if (attempt >= MaxAttempts)
+                            throw new IOException(Describe(ex) + $" (nach {MaxAttempts} Versuchen)", ex);
+
+                        await Task.Delay(TimeSpan.FromSeconds(attempt), cts.Token).ConfigureAwait(false);
                     }
                 }
             }
+        }
 
-            return destination;
+        private static async Task DownloadOnceAsync(
+            string url, string destination, IProgress<int> progress, CancellationToken token)
+        {
+            using (var client = new HttpClient())
+            using (var response = await client
+                .GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token)
+                .ConfigureAwait(false))
+            {
+                response.EnsureSuccessStatusCode();
+                var totalBytes = response.Content.Headers.ContentLength ?? -1L;
+
+                using (var contentStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
+                using (var fileStream = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
+                {
+                    var buffer = new byte[81920];
+                    long totalRead = 0;
+                    int read;
+                    while ((read = await contentStream.ReadAsync(buffer, 0, buffer.Length, token).ConfigureAwait(false)) > 0)
+                    {
+                        await fileStream.WriteAsync(buffer, 0, read, token).ConfigureAwait(false);
+                        totalRead += read;
+                        if (totalBytes > 0 && progress != null)
+                            progress.Report((int)(totalRead * 100 / totalBytes));
+                    }
+                }
+            }
+        }
+
+        /// <summary>Fehlertext inklusive innerster Ursache (die Hauptmeldung allein ist oft nichtssagend).</summary>
+        private static string Describe(Exception ex)
+        {
+            var inner = ex;
+            while (inner.InnerException != null)
+                inner = inner.InnerException;
+            return ReferenceEquals(inner, ex) ? ex.Message : ex.Message + " - " + inner.Message;
         }
     }
 }
