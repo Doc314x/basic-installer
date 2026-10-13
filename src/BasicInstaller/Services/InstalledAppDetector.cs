@@ -55,6 +55,58 @@ namespace BasicInstaller.Services
             return null;
         }
 
+        // MSIX/AppX-Pakete (z.B. das neue Teams) tauchen in der klassischen Uninstall-Registry NICHT
+        // auf. Ihr Paketname steht aber als Schluessel "<Name>_<Version>_<Arch>__<PublisherId>" im
+        // AppX-Paketspeicher: fuer alle Benutzer unter HKLM ...\AppxAllUserStore\Applications, fuer
+        // den aktuellen Benutzer unter HKCU ...\AppModel\Repository\Packages. Ohne PowerShell/WinRT.
+        private static readonly (RegistryHive Hive, string Path)[] AppxTargets =
+        {
+            (RegistryHive.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Applications"),
+            (RegistryHive.CurrentUser, @"Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Packages"),
+        };
+
+        /// <summary>
+        /// Liefert die Version eines installierten MSIX-Pakets (z.B. "MSTeams" -> "26260.1701.5139.3736")
+        /// oder null. packageName ist der Paketname vor dem ersten Unterstrich.
+        /// </summary>
+        public static string FindInstalledAppxVersion(string packageName)
+        {
+            if (string.IsNullOrWhiteSpace(packageName))
+                return null;
+
+            var prefix = packageName + "_";
+            foreach (var (hive, path) in AppxTargets)
+            {
+                RegistryKey baseKey = null;
+                RegistryKey key = null;
+                try
+                {
+                    baseKey = RegistryKey.OpenBaseKey(hive, RegistryView.Registry64);
+                    key = baseKey.OpenSubKey(path);
+                    if (key == null) continue;
+
+                    foreach (var name in key.GetSubKeyNames())
+                    {
+                        if (!name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+                        var parts = name.Split('_');
+                        if (parts.Length > 1 && !string.IsNullOrWhiteSpace(parts[1]))
+                            return parts[1];
+                    }
+                }
+                catch (Exception)
+                {
+                    // wie bei der Uninstall-Erkennung: Zugriffsfehler = "nicht gefunden"
+                }
+                finally
+                {
+                    key?.Dispose();
+                    baseKey?.Dispose();
+                }
+            }
+
+            return null;
+        }
+
         private static string ScanOneView(RegistryHive hive, RegistryView view, string displayNameContains)
         {
             RegistryKey baseKey = null;
