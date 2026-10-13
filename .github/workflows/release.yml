@@ -95,14 +95,16 @@ jobs:
         shell: pwsh
         run: |
           $out = "src/BasicInstaller/bin/Release/net48"
-          $zipName = "BasicInstaller-$($env:GITHUB_REF_NAME).zip"
+          $safeRef = $env:GITHUB_REF_NAME -replace '[^A-Za-z0-9._-]', '-'
+          $zipName = "BasicInstaller-$safeRef.zip"
           Compress-Archive -Path "$out/*" -DestinationPath $zipName -Force
           echo "ZIP_PATH=$zipName" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "SAFE_REF=$safeRef" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Als Build-Artifact hochladen
         uses: actions/upload-artifact@v4
         with:
-          name: BasicInstaller-${{ github.ref_name }}
+          name: BasicInstaller-${{ env.SAFE_REF }}
           path: ${{ env.ZIP_PATH }}
 
       - name: Installer mit Inno Setup bauen (optional)
