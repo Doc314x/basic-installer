@@ -17,6 +17,7 @@ namespace BasicInstaller.Services
     {
         public static void CreateDesktopShortcut(string name, string targetPath)
         {
+            targetPath = Path.GetFullPath(targetPath);
             var desktopDir = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
             var shortcutPath = Path.Combine(desktopDir, name + ".lnk");
 

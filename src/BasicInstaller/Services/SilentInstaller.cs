@@ -199,6 +199,9 @@ namespace BasicInstaller.Services
                         ? Environment.ExpandEnvironmentVariables(app.default_install_path)
                         : KnownFolders.GetDownloadsFolder();
 
+                // "%userprofile%\.." bleibt nach der Variablen-Expansion ein unnormalisierter Pfad
+                // ("C:\Users\X\.."), den WScript.Shell als Ziel/Arbeitsverzeichnis der .lnk ablehnen kann.
+                destinationDir = Path.GetFullPath(destinationDir);
                 Directory.CreateDirectory(destinationDir); // existiert praktisch immer, aber kein Grund darauf zu vertrauen
                 // Der Download-Cache legt Dateien als "<app-id>_<name>" ab (Downloader). Dieses interne
                 // Praefix gehoert nicht auf den Zielort ("shutup10_OOSU10.exe", "teamviewer_qs_asct_
@@ -224,7 +227,7 @@ namespace BasicInstaller.Services
                         // Datei liegt bereits da und ist nutzbar - nur die
                         // Verknuepfung fehlt. Gleiches "nicht den Erfolg
                         // verschlucken"-Prinzip wie beim Lizenzdatei-Schreiben.
-                        message += $" | Verknüpfung konnte nicht angelegt werden: {ex.Message}";
+                        message += $" | Verknüpfung konnte nicht angelegt werden ({ex.GetType().Name}, Ziel {destination}): {ex.Message}";
                     }
                 }
 
