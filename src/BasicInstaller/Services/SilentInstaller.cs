@@ -183,6 +183,26 @@ namespace BasicInstaller.Services
                 }
             }
 
+            if (result.Outcome == InstallOutcome.Success && app.options != null && optionSubstitutions != null)
+            {
+                foreach (var option in app.options)
+                {
+                    if (string.IsNullOrWhiteSpace(option.post_install_uri)) continue;
+                    if (!optionSubstitutions.TryGetValue(option.key, out var v) || v != "1") continue;
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo(option.post_install_uri) { UseShellExecute = true });
+                        result.Message = (string.IsNullOrEmpty(result.Message) ? "" : result.Message + " | ")
+                            + "Windows-Einstellungen für Standard-Apps geöffnet - dort bitte die App einmal bestätigen.";
+                    }
+                    catch (Exception ex)
+                    {
+                        result.Message = (string.IsNullOrEmpty(result.Message) ? "" : result.Message + " | ")
+                            + "Standard-Apps-Seite konnte nicht geöffnet werden: " + ex.Message;
+                    }
+                }
+            }
+
             return result;
         }
 
@@ -323,8 +343,10 @@ namespace BasicInstaller.Services
             {
                 foreach (var option in app.options)
                 {
-                    if (string.IsNullOrWhiteSpace(option.cli_arg_template)) continue;
                     if (!optionSubstitutions.TryGetValue(option.key, out var value)) continue;
+                    if (!string.IsNullOrWhiteSpace(option.cli_arg_when_true) && value == "1")
+                        AppendArg(option.cli_arg_when_true);
+                    if (string.IsNullOrWhiteSpace(option.cli_arg_template)) continue;
                     AppendArg(option.cli_arg_template.Replace("{" + option.key + "}", value));
                 }
             }

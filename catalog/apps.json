@@ -109,7 +109,15 @@
       "default_language": null,
       "languages": null,
       "notes": "Direktlink https://www.irfanview.info/files/iview<NNN>g_x64_setup.exe (NNN = Version ohne Punkt, z.B. 476 = 4.76). Der Server liefert OHNE passenden Referer nur eine HTML-Seite 'Click again to start Download' - mit Referer https://www.irfanview.info/ kommt die echte EXE (live geprueft 13.10.2026: application/x-msdos-program, ~4,8 MB, auch ohne User-Agent). Das Katalogfeld referer setzt diesen Header im Downloader. Die aktuelle Versionsnummer wird zur Laufzeit von www.irfanview.com/64bit.htm gelesen (version_url/version_regex). UI-Sprache kommt per separatem Sprachplugin (irfanview_*_languages.zip), nicht per Silent-Switch - nicht modelliert, GUI zeigt 'Standard'. Silent-Switches /silent und /dir= nicht an einer echten Installation verifiziert.",
-      "detect_display_name_contains": "IrfanView"
+      "detect_display_name_contains": "IrfanView",
+      "options": [
+        {
+          "key": "make_default",
+          "label": "Als Standardprogramm für Bilddateien festlegen",
+          "default_value": false,
+          "cli_arg_when_true": "/assoc=1"
+        }
+      ]
     },
     {
       "id": "acrobat_reader",
@@ -137,7 +145,15 @@
       "default_language": null,
       "languages": null,
       "notes": "Vollstaendiger MUI-Offline-Installer (~820 MB, alle Sprachen, 64 Bit) von ardownload2.adobe.com. Der fruehere Online-Stub (readerdc64_<sprache>_cra_install.exe) ist unbrauchbar: er fragt get3.adobe.com/reader/webservices/adm/ ab, bekommt HTTP 403, zeigt eine Fehlerseite und beendet sich trotzdem mit Exit-Code 0 (live getestet 13.10.2026). Die Version wird zur Laufzeit von Adobes eigener API rdc.adobe.io ermittelt (version_url); der Ordner/Dateiname enthaelt sie ohne Punkte ({version_nodots}, z.B. 26.002.21931 = 2600221931). Silent-Schalter gemaess winget-Manifest Adobe.Acrobat.Reader.64-bit: -sfx_nu /sAll /rs /msi (+ EULA_ACCEPT=YES). In der Registry heisst das Produkt \"Adobe Acrobat (64-bit)\" (nicht \"Acrobat Reader\") - daher detect_display_name_contains \"Adobe Acrobat\". Die MUI-Variante installiert alle Sprachen; eine Sprachwahl per Schalter ist nicht modelliert.",
-      "detect_display_name_contains": null
+      "detect_display_name_contains": null,
+      "options": [
+        {
+          "key": "make_default",
+          "label": "Windows-Standard-Apps nach der Installation öffnen (PDF-Zuordnung)",
+          "default_value": false,
+          "post_install_uri": "ms-settings:defaultapps"
+        }
+      ]
     },
     {
       "id": "eset_nod32",

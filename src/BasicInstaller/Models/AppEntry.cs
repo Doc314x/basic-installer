@@ -47,6 +47,17 @@ namespace BasicInstaller.Models
         // (Datei UND CLI-Switch) sind pro Option unabhaengig nutzbar, auch
         // gleichzeitig, falls eine App beides braucht.
         public string cli_arg_template { get; set; }
+
+        // Optional: Switch, der NUR bei angehaktem Kontrollkaestchen angehaengt wird
+        // (z.B. IrfanView "/assoc=1"). Anders als cli_arg_template entsteht bei
+        // nicht angehakter Option gar kein Argument, statt "...=0" zu senden.
+        public string cli_arg_when_true { get; set; }
+
+        // Optional: URI, die nach erfolgreicher Installation geoeffnet wird, wenn die
+        // Option angehakt ist - fuer "Als Standardapp festlegen" bei Programmen ohne
+        // eigenen Installer-Switch (z.B. "ms-settings:defaultapps"). Windows 10/11
+        // schuetzt die Standard-App-Zuordnung per Hash; setzen muss der Nutzer sie selbst.
+        public string post_install_uri { get; set; }
     }
 
     /// <summary>
